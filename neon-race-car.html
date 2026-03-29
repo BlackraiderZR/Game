@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Highway - Arcade Racing</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,400&display=swap');
+
+        :root {
+            --primary: #00ffcc;
+            --secondary: #ff0055;
+            --dark: #0f172a;
+            --light: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: #000;
+            color: var(--light);
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* UI Overlays */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px var(--primary);
+            color: #fff;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            color: var(--primary);
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            background: transparent;
+            color: #fff;
+            border: 2px solid var(--primary);
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin: 10px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.2) inset;
+            font-family: 'Montserrat', sans-serif;
+            min-width: 250px;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: var(--dark);
+            box-shadow: 0 0 20px var(--primary);
+            transform: scale(1.05);
+        }
+
+        .btn.secondary {
+            border-color: var(--secondary);
+            box-shadow: 0 0 10px rgba(255, 0, 85, 0.2) inset;
+        }
+
+        .btn.secondary:hover {
+            background: var(--secondary);
+            box-shadow: 0 0 20px var(--secondary);
+        }
+        
+        /* Credit Text */
+        .credit {
+            margin-top: 30px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        /* Garage UI */
+        .garage-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            max-width: 900px;
+            overflow-x: auto;
+            padding: 20px;
+        }
+
+        .car-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+
+        .car-card.selected {
+            border-color: var(--primary);
+            background: rgba(0, 255, 204, 0.1);
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0, 255, 204, 0.2);
+        }
+
+        .car-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .color-picker {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: transform 0.2s;
+        }
+
+        .color-swatch.selected {
+            border-color: #fff;
+            transform: scale(1.2);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .hud-box {
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(4px);
+        }
+
+        .score-val { font-size: 2rem; font-weight: 900; color: var(--primary); }
+        .score-label { font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .lives { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
+        .life-icon { width: 30px; height: 30px; transition: all 0.3s; filter: drop-shadow(0 0 5px var(--secondary)); background: transparent; }
+        .life-icon.lost { filter: grayscale(1) brightness(0.2); transform: scale(0.8); background: transparent; }
+        .life-icon svg { width: 100%; height: 100%; display: block; }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Stats Game Over */
+        .stats {
+            background: rgba(0,0,0,0.5);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            min-width: 300px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .stats p { margin: 10px 0; font-size: 1.2rem; }
+        .stats .highlight { font-size: 2.5rem; font-weight: bold; color: var(--primary); display: block; margin-top: 5px; }
+        
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+        <div class="hud-box">
+            <div class="score-label">Distance</div>
+            <div class="score-val"><span id="hud-score">0</span> m</div>
+            <div class="lives" id="hud-lives">
+                <div class="life-icon"></div><div class="life-icon"></div><div class="life-icon"></div>
+            </div>
+        </div>
+        <div class="hud-box" style="text-align: right;">
+            <div class="score-label">Top Score</div>
+            <div class="score-val" style="color: #fff;"><span id="hud-top">0</span> m</div>
+        </div>
+    </div>
+    
+    <div id="controls-hint" class="controls-hint hidden">USE [A] [D] OR [LEFT] [RIGHT] TO STEER</div>
+
+    <!-- Main Menu -->
+    <div id="menu-screen" class="screen">
+        <h1>Neon Highway</h1>
+        <div class="subtitle">ARCADE DRIVING EXPERIENCE</div>
+        <button class="btn" onclick="gameState.changeState('PLAYING')">Play Now</button>
+        <button class="btn" onclick="gameState.changeState('GARAGE')">Garage</button>
+        <div class="credit">Credit By ALWANU ZAKY RAIHAN</div>
+    </div>
+
+    <!-- Garage -->
+    <div id="garage-screen" class="screen hidden">
+        <h2>Select Your Vehicle</h2>
+        
+        <div class="garage-container">
+            <div class="car-card selected" onclick="garage.selectCar('sport')" id="card-sport">
+                <h3>Sport</h3>
+                <canvas id="prev-sport" width="160" height="120"></canvas>
+            </div>
+            <div class="car-card" onclick="garage.selectCar('muscle')" id="card-muscle">
+                <h3>Muscle</h3>
+                <canvas id="prev-muscle" width="160" height="120"></canvas>
+            </div>
+            <div class="car-card" onclick="garage.selectCar('classic')" id="card-classic">
+                <h3>Classic</h3>
+                <canvas id="prev-classic" width="160" height="120"></canvas>
+            </div>
+        </div>
+
+        <h3>Paint Job</h3>
+        <div class="color-picker">
+            <div class="color-swatch selected" style="background: #ff0055; color: #ff0055;" onclick="garage.selectColor('#ff0055', this)"></div>
+            <div class="color-swatch" style="background: #00ffcc; color: #00ffcc;" onclick="garage.selectColor('#00ffcc', this)"></div>
+            <div class="color-swatch" style="background: #ffcc00; color: #ffcc00;" onclick="garage.selectColor('#ffcc00', this)"></div>
+            <div class="color-swatch" style="background: #ffffff; color: #ffffff;" onclick="garage.selectColor('#ffffff', this)"></div>
+            <div class="color-swatch" style="background: #222222; color: #222222;" onclick="garage.selectColor('#222222', this)"></div>
+        </div>
+
+        <button class="btn" onclick="gameState.changeState('MENU')">Back to Menu</button>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameover-screen" class="screen hidden">
+        <h1 style="color: var(--secondary); text-shadow: 0 0 20px var(--secondary);">Wrecked!</h1>
+        <div class="stats">
+            <p class="score-label">Distance Covered</p>
+            <span class="highlight" id="end-score">0 m</span>
+            <div style="height: 20px;"></div>
+            <p class="score-label">Best Distance</p>
+            <span class="highlight" style="color: #fff; font-size: 1.8rem;" id="end-top">0 m</span>
+        </div>
+        <button class="btn" onclick="gameState.changeState('PLAYING')">Race Again</button>
+        <button class="btn secondary" onclick="gameState.changeState('MENU')">Main Menu</button>
+    </div>
+</div>
+
+<script>
+/**
+ * CORE ENGINE CONFIGURATION & STATE
+ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on base
+let width = window.innerWidth;
+let height = window.innerHeight;
+canvas.width = width;
+canvas.height = height;
+
+// Global Game State Objects
+const state = {
+    current: 'MENU',
+    distance: 0,
+    topScore: parseInt(localStorage.getItem('neon_top_score')) || 0,
+    lives: 3,
+    speed: 15000, // Kecepatan maju Z-axis
+    maxTraffic: 8,
+    shakeTime: 0
+};
+
+const player = {
+    laneIndex: 1,   // Start di jalur ke-2
+    x: -0.25,       // -1 (Kiri) sampai 1 (Kanan)
+    y: 0,
+    z: 0,           // Posisi di track
+    type: 'sport',
+    color: '#ff0055',
+    width: 0.8,     // Relative to lane
+    invulnerable: 0 // Timer berkedip setelah tabrakan
+};
+
+const keys = { Left: false, Right: false };
+
+// Track & Camera config
+const camera = { height: 1000, depth: 0.84 }; // Depth controls FOV
+const track = {
+    segments: [],
+    segmentLength: 200,
+    drawDistance: 300,
+    roadWidth: 2800, // DIPERLEBAR AGAR JALUR LEBIH IDEAL DAN LUAS
+    lanes: 4
+};
+
+const LANES = [-0.75, -0.25, 0.25, 0.75]; // Fix Posisi Jalur Track
+let trafficObjects = [];
+let sceneryObjects = []; // Koleksi elemen pinggir jalan
+let nextBillboardZ = 15000; // Tracker untuk memunculkan Billboard agar langka
+
+// Theme / Warna Jarak (Rumput luar direvisi menjadi solid hijau natural, tanpa blinking hitam)
+const THEMES = [
+    { skyTop: '#4facfe', skyBot: '#00f2fe', grassL: '#12b812', grassD: '#10aa10', roadL: '#6B6B6B', roadD: '#656565' }, // 0-500m (Day) - Hijau Asli
+    { skyTop: '#f6d365', skyBot: '#fda085', grassL: '#8c8c2a', grassD: '#808025', roadL: '#5A5A5A', roadD: '#505050' }, // 500-1000m (Sunset) - Kuning Gelap
+    { skyTop: '#0f172a', skyBot: '#1e1b4b', grassL: '#0a210a', grassD: '#081c08', roadL: '#2a2a2a', roadD: '#252525' }  // 1000m+ (Night) - Gelap Malam
+];
+let currentTheme = THEMES[0];
+
+// Audio System (Sederhana agar tidak bug)
+const audio = {
+    ctx: null,
+    engineNode: null,
+    engineGain: null,
+    init() {
+        if(this.ctx) return;
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.engineGain = this.ctx.createGain();
+            this.engineGain.gain.value = 0;
+            this.engineGain.connect(this.ctx.destination);
+            
+            this.engineNode = this.ctx.createOscillator();
+            this.engineNode.type = 'triangle';
+            this.engineNode.frequency.value = 50;
+            this.engineNode.connect(this.engineGain);
+            this.engineNode.start();
+        } catch(e) { console.warn("Audio not supported"); }
+    },
+    playEngine() {
+        if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+        if(this.engineGain) this.engineGain.gain.setTargetAtTime(0.1, this.ctx.currentTime, 0.5);
+    },
+    stopEngine() {
+        if(this.engineGain) this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+    },
+    playCrash() {
+        if(!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.5);
+    }
+};
+
+/**
+ * UTILITY & MATH FUNCTIONS
+ */
+const Util = {
+    project: (p, cameraX, cameraY, cameraZ) => {
+        p.camera.x = (p.world.x || 0) - cameraX;
+        p.camera.y = (p.world.y || 0) - cameraY;
+        p.camera.z = (p.world.z || 0) - cameraZ;
+        p.screen.scale = camera.depth / p.camera.z;
+        p.screen.x = Math.round((width / 2) + (p.screen.scale * p.camera.x * width / 2));
+        p.screen.y = Math.round((height / 2) - (p.screen.scale * p.camera.y * height / 2));
+        p.screen.w = Math.round((p.screen.scale * track.roadWidth * width / 2));
+    },
+    drawPolygon: (ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.lineTo(x4, y4);
+        ctx.closePath();
+        ctx.fill();
+    },
+    lerpColor: (c1, c2, factor) => {
+        const hexToRgb = hex => hex.match(/\w\w/g).map(x => parseInt(x, 16));
+        const rgb1 = hexToRgb(c1);
+        const rgb2 = hexToRgb(c2);
+        const res = rgb1.map((c, i) => Math.round(c + factor * (rgb2[i] - c)));
+        return `rgb(${res[0]},${res[1]},${res[2]})`;
+    },
+    updateTheme: () => {
+        const distMeter = state.distance;
+        let t1, t2, factor;
+        
+        if (distMeter < 500) {
+            t1 = THEMES[0]; t2 = THEMES[1]; factor = distMeter / 500;
+        } else if (distMeter < 1000) {
+            t1 = THEMES[1]; t2 = THEMES[2]; factor = (distMeter - 500) / 500;
+        } else {
+            t1 = THEMES[2]; t2 = THEMES[2]; factor = 1; // Stay night
+        }
+
+        // Apply Lerp for smooth transition
+        currentTheme = {
+            skyTop: Util.lerpColor(t1.skyTop, t2.skyTop, factor),
+            skyBot: Util.lerpColor(t1.skyBot, t2.skyBot, factor),
+            grassL: Util.lerpColor(t1.grassL, t2.grassL, factor),
+            grassD: Util.lerpColor(t1.grassD, t2.grassD, factor),
+            roadL: Util.lerpColor(t1.roadL, t2.roadL, factor),
+            roadD: Util.lerpColor(t1.roadD, t2.roadD, factor)
+        };
+    }
+};
+
+/**
+ * ENVIRONMENT RENDERER (Tree, Billboard)
+ */
+const EnvironmentModel = {
+    drawTree: (ctx, x, y, scale) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        // Shadow / Bayangan Bawah (Disesuaikan Skalanya)
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, 5, 60, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Trunk / Batang Kayu
+        ctx.fillStyle = '#4a2f1d';
+        ctx.fillRect(-12, -50, 24, 50);
+
+        // Daun Pohon Pinus (3 Layer dibuat lebih besar dan proporsional)
+        // Layer Bawah (Gelap)
+        ctx.fillStyle = '#0f401b';
+        ctx.beginPath(); ctx.moveTo(0, -150); ctx.lineTo(75, -30); ctx.lineTo(-75, -30); ctx.fill();
+        
+        // Layer Tengah (Sedang)
+        ctx.fillStyle = '#145c25';
+        ctx.beginPath(); ctx.moveTo(0, -200); ctx.lineTo(60, -80); ctx.lineTo(-60, -80); ctx.fill();
+        
+        // Layer Atas (Terang)
+        ctx.fillStyle = '#1c7a32';
+        ctx.beginPath(); ctx.moveTo(0, -250); ctx.lineTo(45, -140); ctx.lineTo(-45, -140); ctx.fill();
+
+        ctx.restore();
+    },
+    
+    drawBillboard: (ctx, text, x, y, scale) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        // Shadow / Bayangan Bawah Tiang
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 5, 120, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tiang Penyangga (Lebih Tinggi & Besar)
+        ctx.fillStyle = '#222';
+        ctx.fillRect(-90, -200, 20, 200);
+        ctx.fillRect(70, -200, 20, 200);
+
+        // Papan (Board) - Diperlebar
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-220, -380, 440, 180);
+        
+        // Bingkai Papan Neon
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(-220, -380, 440, 180);
+
+        // Teks (Sangat besar dan jelas)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 40px Montserrat';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#00ffcc';
+        ctx.shadowBlur = 15;
+        ctx.fillText(text, 0, -290);
+
+        ctx.restore();
+    }
+};
+
+/**
+ * VEHICLE RENDERER (Detailed Canvas Paths)
+ */
+const VehicleModel = {
+    drawCar: (ctx, type, color, x, y, scale, isTraffic = false) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        
+        // Base dimensions (Lebih proporsional tinggi dan lebarnya, tidak gepeng)
+        const w = 150;
+        const h = 110; 
+        
+        // Shadow (Oval at bottom)
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.beginPath();
+        ctx.ellipse(0, 10, w*0.55, 15, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        // Draw tires based on type
+        ctx.fillStyle = '#111';
+        let tireW = 30, tireH = 40, tireY = -15;
+        if(type === 'muscle') { tireW = 40; tireH = 45; tireY = -20; }
+        
+        // Tires
+        ctx.beginPath(); ctx.roundRect(-w/2 + 10, tireY, tireW, tireH, 5); ctx.fill(); // Left
+        ctx.beginPath(); ctx.roundRect(w/2 - tireW - 10, tireY, tireW, tireH, 5); ctx.fill();  // Right
+
+        // Specific Car Geometry
+        ctx.fillStyle = color;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+
+        if (type === 'sport') {
+            // Lower Body
+            ctx.beginPath();
+            ctx.moveTo(-w*0.48, 0);
+            ctx.lineTo(-w*0.45, -h*0.45);
+            ctx.lineTo(w*0.45, -h*0.45);
+            ctx.lineTo(w*0.48, 0);
+            ctx.fill(); ctx.stroke();
+            
+            // Cabin
+            ctx.beginPath();
+            ctx.moveTo(-w*0.38, -h*0.45);
+            ctx.lineTo(-w*0.25, -h*0.85);
+            ctx.quadraticCurveTo(0, -h*0.9, w*0.25, -h*0.85);
+            ctx.lineTo(w*0.38, -h*0.45);
+            ctx.fill(); ctx.stroke();
+
+            // Rear Window
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.moveTo(-w*0.32, -h*0.48);
+            ctx.lineTo(-w*0.22, -h*0.82);
+            ctx.quadraticCurveTo(0, -h*0.85, w*0.22, -h*0.82);
+            ctx.lineTo(w*0.32, -h*0.48);
+            ctx.fill();
+
+            // Spoiler
+            ctx.fillStyle = '#222';
+            ctx.fillRect(-w*0.45, -h*0.5, w*0.9, 6);
+            ctx.fillRect(-w*0.35, -h*0.5, 6, 12);
+            ctx.fillRect(w*0.35 - 6, -h*0.5, 6, 12);
+
+            // Taillights
+            ctx.fillStyle = isTraffic ? '#ff0000' : '#ff3333';
+            ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10;
+            ctx.fillRect(-w*0.42, -h*0.35, 35, 12);
+            ctx.fillRect(w*0.42 - 35, -h*0.35, 35, 12);
+            ctx.shadowBlur = 0;
+
+        } else if (type === 'muscle') {
+            // Boxy, aggressive
+            // Lower Body
+            ctx.beginPath();
+            ctx.moveTo(-w*0.45, 0);
+            ctx.lineTo(-w*0.45, -h*0.55);
+            ctx.lineTo(w*0.45, -h*0.55);
+            ctx.lineTo(w*0.45, 0);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // Racing Stripes
+            if(color !== '#ffffff') {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(-15, -h*0.55, 10, h*0.55);
+                ctx.fillRect(5, -h*0.55, 10, h*0.55);
+            }
+            ctx.fillStyle = color; // reset
+
+            // Cabin
+            ctx.beginPath();
+            ctx.moveTo(-w*0.4, -h*0.55);
+            ctx.lineTo(-w*0.35, -h*0.95);
+            ctx.lineTo(w*0.35, -h*0.95);
+            ctx.lineTo(w*0.4, -h*0.55);
+            ctx.fill(); ctx.stroke();
+
+            // Window
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-w*0.32, -h*0.9, w*0.64, h*0.35);
+
+            // Taillights
+            ctx.fillStyle = '#ff0000';
+            ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 15;
+            ctx.fillRect(-w*0.4, -h*0.35, 25, 15);
+            ctx.fillRect(-w*0.2, -h*0.35, 25, 15);
+            ctx.fillRect(w*0.4 - 25, -h*0.35, 25, 15);
+            ctx.fillRect(w*0.2 - 25, -h*0.35, 25, 15);
+            ctx.shadowBlur = 0;
+
+        } else if (type === 'classic') {
+            // Rounded curves
+            // Lower Body
+            ctx.beginPath();
+            ctx.moveTo(-w*0.4, 0);
+            ctx.bezierCurveTo(-w*0.55, 0, -w*0.5, -h*0.45, -w*0.4, -h*0.45);
+            ctx.lineTo(w*0.4, -h*0.45);
+            ctx.bezierCurveTo(w*0.5, -h*0.45, w*0.55, 0, w*0.4, 0);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // Cabin
+            ctx.beginPath();
+            ctx.moveTo(-w*0.35, -h*0.45);
+            ctx.bezierCurveTo(-w*0.35, -h*0.95, w*0.35, -h*0.95, w*0.35, -h*0.45);
+            ctx.fill(); ctx.stroke();
+
+            // Window
+            ctx.fillStyle = '#222';
+            ctx.beginPath();
+            ctx.moveTo(-w*0.28, -h*0.45);
+            ctx.bezierCurveTo(-w*0.28, -h*0.85, w*0.28, -h*0.85, w*0.28, -h*0.45);
+            ctx.fill();
+
+            // Chrome Bumper
+            ctx.fillStyle = '#ddd';
+            ctx.beginPath(); ctx.roundRect(-w*0.45, -15, w*0.9, 15, 8); ctx.fill();
+
+            // Taillights
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath(); ctx.arc(-w*0.4, -h*0.25, 12, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(w*0.4, -h*0.25, 12, 0, Math.PI*2); ctx.fill();
+        }
+
+        ctx.restore();
+    }
+};
+
+/**
+ * GAME ENGINE CORE (Track, Entities, Loop)
+ */
+function resetRoad() {
+    track.segments = [];
+    for (let n = 0; n < 2000; n++) {
+        // Hanya garis lurus, kurva dihapus total untuk jaminan 100% stabil bebas bug visual.
+        track.segments.push({
+            index: n,
+            p1: { world: { z:  n    * track.segmentLength }, camera: {}, screen: {} },
+            p2: { world: { z: (n+1) * track.segmentLength }, camera: {}, screen: {} },
+            color: Math.floor(n/3) % 2 ? 'light' : 'dark' // Pola papan catur jalan
+        });
+    }
+}
+
+function spawnTraffic() {
+    // Bersihkan traffic yang sudah lewat jauh di belakang
+    trafficObjects = trafficObjects.filter(t => t.z > player.z - 1000);
+    
+    // Spawn baru jika kurang (Perbaikan bug: mobil AI kini dijamin muncul di depan)
+    while(trafficObjects.length < state.maxTraffic) {
+        let spawnZ = player.z + (track.drawDistance * track.segmentLength) + (Math.random() * 40000);
+        
+        // Random lane snap dari array konstan LANES
+        const lane = LANES[Math.floor(Math.random() * LANES.length)];
+        
+        const types = ['sport', 'muscle', 'classic'];
+        const colors = ['#ffffff', '#222222', '#ffcc00', '#00ffcc'];
+
+        trafficObjects.push({
+            x: lane,
+            z: spawnZ,
+            speed: state.speed * (0.4 + Math.random() * 0.4), // Bergerak lebih lambat dari player
+            type: types[Math.floor(Math.random() * types.length)],
+            color: colors[Math.floor(Math.random() * colors.length)]
+        });
+    }
+}
+
+// SPAM LINGKUNGAN / SCENERY SEPERTI POHON DAN BILLBOARD
+function spawnScenery() {
+    // Buang properti jalan yang sudah dilewati ke belakang
+    sceneryObjects = sceneryObjects.filter(s => s.z > player.z - 1000);
+
+    let targetZ = player.z + (track.drawDistance * track.segmentLength) + 10000;
+    let lastZ = sceneryObjects.length > 0 ? sceneryObjects[sceneryObjects.length - 1].z : player.z;
+
+    // Memproduksi elemen pinggir jalan secara reguler namun direnggangkan jaraknya (tidak terlalu rimbun)
+    while (lastZ < targetZ) {
+        lastZ += 1200 + Math.random() * 800; // Jarak antar pohon lebih jauh agar lebih clean
+
+        // Menambahkan Model Pohon Pinus (Acak Kiri) - Lebarkan jarak x agar jauh dari aspal
+        if (Math.random() > 0.4) {
+            sceneryObjects.push({ type: 'tree', x: -1.6 - Math.random() * 2.0, z: lastZ + (Math.random() * 200) });
+        }
+        
+        // Menambahkan Model Pohon Pinus (Acak Kanan)
+        if (Math.random() > 0.4) {
+            sceneryObjects.push({ type: 'tree', x: 1.6 + Math.random() * 2.0, z: lastZ + (Math.random() * 200) });
+        }
+
+        // Papan Reklame/Billboard (Jarang Muncul)
+        if (lastZ > nextBillboardZ) {
+            let side = Math.random() > 0.5 ? 2.0 : -2.0; // Posisikan di kiri atau kanan
+            let text = Math.random() > 0.5 ? "SMK 9 SURAKARTA" : "TJKT 3";
+            sceneryObjects.push({ type: 'billboard', text: text, x: side, z: lastZ });
+            
+            // Atur agar Billboard berikutnya baru akan muncul setelah 30k hingga 50k unit jarak ke depan
+            nextBillboardZ += 30000 + Math.random() * 20000; 
+        }
+    }
+}
+
+function resetGame() {
+    state.distance = 0;
+    state.lives = 3;
+    player.laneIndex = 1; // Default spawn lane
+    player.x = LANES[player.laneIndex];
+    player.z = 0;
+    player.invulnerable = 0;
+    trafficObjects = [];
+    sceneryObjects = []; // Reset properti pinggir jalan
+    nextBillboardZ = 15000; // Reset pelacak kemunculan Billboard
+    currentTheme = THEMES[0];
+    resetRoad();
+    spawnTraffic();
+    spawnScenery();
+    updateHUD();
+}
+
+// Fungsi untuk me-loop map lintasan agar game bisa berjalan tanpa akhir (Endless mode)
+function loopTrack() {
+    if(player.z > (track.segments.length - track.drawDistance - 10) * track.segmentLength) {
+        let offset = (track.segments.length / 2) * track.segmentLength;
+        player.z -= offset;
+        nextBillboardZ -= offset; // Jaga sinkronisasi tracker Billboard
+        trafficObjects.forEach(t => t.z -= offset);
+        sceneryObjects.forEach(s => s.z -= offset); // Menurunkan Index Z Scenery agar tidak hilang
+    }
+}
+
+function checkCollisions() {
+    if(player.invulnerable > 0) return;
+
+    // Perbaikan Collison: Menggunakan Screen-Space hitbox agar 100% akurat dengan pandangan pemain
+    const playerScreenY = height - 80;
+    const playerScreenX = width / 2;
+    const hitRadiusY = 60; // Disesuaikan untuk tinggi mobil baru
+    const hitRadiusX = 85; 
+
+    for(let i=0; i<trafficObjects.length; i++) {
+        let t = trafficObjects[i];
+        let dz = t.z - player.z;
+        
+        // Hanya kalkulasi mobil yang dekat layar (hemat memori)
+        if(dz > 10 && dz < 4000) {
+            let p = { world: { x: t.x * track.roadWidth, y: 0, z: t.z }, camera: {}, screen: {} };
+            Util.project(p, player.x * track.roadWidth, camera.height, player.z);
+            
+            // Tabrakan presisi saat mobil AI dan Player bertumpuk secara visual
+            if (Math.abs(p.screen.y - playerScreenY) < hitRadiusY && 
+                Math.abs(p.screen.x - playerScreenX) < hitRadiusX) {
+                
+                // Tabrakan!
+                state.lives--;
+                state.shakeTime = 0.3; // Screen shake
+                player.invulnerable = 2.0; // Kebal 2 detik
+                audio.playCrash();
+                updateHUD();
+                
+                // Lontarkan player sedikit ke tengah untuk mencegah multi hit
+                player.x = player.x * 0.5;
+
+                if(state.lives <= 0) {
+                    gameState.changeState('GAMEOVER');
+                }
+                break;
+            }
+        }
+    }
+}
+
+function update(dt) {
+    if (state.current !== 'PLAYING') return;
+
+    // Movement Forward
+    player.z += state.speed * dt;
+    state.distance = Math.floor(player.z / 100);
+
+    // Steering (Pindah Jalur Snap dengan Interpolation Mulus)
+    const targetX = LANES[player.laneIndex];
+    player.x += (targetX - player.x) * 12 * dt;
+
+    // Update Traffic & Scenery
+    trafficObjects.forEach(t => { t.z += t.speed * dt; });
+    spawnTraffic();
+    spawnScenery();
+
+    // Game Logic
+    if(player.invulnerable > 0) player.invulnerable -= dt;
+    if(state.shakeTime > 0) state.shakeTime -= dt;
+    
+    checkCollisions();
+    Util.updateTheme();
+    updateHUD();
+}
+
+function render() {
+    // 1. Gambar Latar Belakang (Sky)
+    const grd = ctx.createLinearGradient(0, 0, 0, height);
+    grd.addColorStop(0, currentTheme.skyTop);
+    grd.addColorStop(1, currentTheme.skyBot);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, width, height);
+
+    // Screen Shake Effect
+    ctx.save();
+    if(state.shakeTime > 0) {
+        const magnitude = 15;
+        const dx = (Math.random()-0.5) * magnitude;
+        const dy = (Math.random()-0.5) * magnitude;
+        ctx.translate(dx, dy);
+    }
+
+    // 2. Render Jalan Pseudo-3D
+    let baseSegmentIndex = Math.floor(player.z / track.segmentLength);
+    // Perlindungan agar array index jalan raya tidak pernah keluar batas (Mencegah undefined Array)
+    if (baseSegmentIndex < 0) baseSegmentIndex = 0;
+    if (baseSegmentIndex >= track.segments.length) baseSegmentIndex = track.segments.length - 1;
+    
+    const baseSegment = track.segments[baseSegmentIndex];
+    const maxy = height; // Clip polygon yang di belakang gunung/di atas layar
+
+    for (let n = 0; n < track.drawDistance; n++) {
+        let segmentIndex = (baseSegment.index + n) % track.segments.length;
+        let segment = track.segments[segmentIndex];
+        
+        // Looped track logic untuk rendering aman
+        segment.p1.world.z = (baseSegment.index + n) * track.segmentLength;
+        segment.p2.world.z = (baseSegment.index + n + 1) * track.segmentLength;
+
+        Util.project(segment.p1, player.x * track.roadWidth, camera.height, player.z);
+        Util.project(segment.p2, player.x * track.roadWidth, camera.height, player.z);
+
+        // Abaikan jika di belakang kamera atau di luar maxy
+        if (segment.p1.camera.z <= camera.depth || segment.p2.screen.y >= maxy) continue;
+
+        // Tentukan warna (Pola rumput hitam-hijau sudah dihapus. Menggunakan hijau solid yang nyaman)
+        let grass = segment.color === 'light' ? currentTheme.grassL : currentTheme.grassD;
+        let road  = segment.color === 'light' ? currentTheme.roadL : currentTheme.roadD;
+        let rumble = segment.color === 'light' ? '#fff' : '#ff0000';
+        let lane  = segment.color === 'light' ? '#fff' : 'transparent';
+
+        // Grass (Tarik +1 pixel ke bawah untuk mencegah garis hitam)
+        ctx.fillStyle = grass;
+        ctx.fillRect(0, segment.p2.screen.y, width, segment.p1.screen.y - segment.p2.screen.y + 1);
+
+        // Rumble Strips (+1 padding bawah anti-glitch)
+        Util.drawPolygon(ctx, 
+            segment.p1.screen.x - segment.p1.screen.w * 1.1, segment.p1.screen.y + 1,
+            segment.p1.screen.x + segment.p1.screen.w * 1.1, segment.p1.screen.y + 1,
+            segment.p2.screen.x + segment.p2.screen.w * 1.1, segment.p2.screen.y,
+            segment.p2.screen.x - segment.p2.screen.w * 1.1, segment.p2.screen.y, rumble);
+
+        // Road Surface (+1 padding bawah anti-glitch)
+        Util.drawPolygon(ctx, 
+            segment.p1.screen.x - segment.p1.screen.w, segment.p1.screen.y + 1,
+            segment.p1.screen.x + segment.p1.screen.w, segment.p1.screen.y + 1,
+            segment.p2.screen.x + segment.p2.screen.w, segment.p2.screen.y,
+            segment.p2.screen.x - segment.p2.screen.w, segment.p2.screen.y, road);
+
+        // Lane Lines (4 lanes = 3 pemisah) (+1 padding bawah)
+        if(segment.color === 'light') {
+            for(let l = 1; l < track.lanes; l++) {
+                let laneX1 = segment.p1.screen.x - segment.p1.screen.w + (l * 2 * segment.p1.screen.w / track.lanes);
+                let laneX2 = segment.p2.screen.x - segment.p2.screen.w + (l * 2 * segment.p2.screen.w / track.lanes);
+                let laneW1 = segment.p1.screen.w * 0.02;
+                let laneW2 = segment.p2.screen.w * 0.02;
+                Util.drawPolygon(ctx, 
+                    laneX1 - laneW1, segment.p1.screen.y + 1, 
+                    laneX1 + laneW1, segment.p1.screen.y + 1, 
+                    laneX2 + laneW2, segment.p2.screen.y, 
+                    laneX2 - laneW2, segment.p2.screen.y, lane);
+            }
+        }
+    }
+
+    // 3. Render Objek Lingkungan Dan Traffic Bersamaan (Digabung untuk Z-Sorting yang akurat)
+    let visibleObjects = [];
+    
+    // 3.1 Masukkan Mobil Traffic NPC
+    for(let i=0; i<trafficObjects.length; i++) {
+        let t = trafficObjects[i];
+        let dz = t.z - player.z;
+        if(dz > 10 && dz < track.drawDistance * track.segmentLength) {
+            let p = { world: { x: t.x * track.roadWidth, y: 0, z: t.z }, camera: {}, screen: {} };
+            Util.project(p, player.x * track.roadWidth, camera.height, player.z);
+            if(p.camera.z > camera.depth && p.screen.y > 0 && p.screen.y < height + 200) {
+                visibleObjects.push({
+                    isTraffic: true, type: t.type, color: t.color,
+                    x: p.screen.x, y: p.screen.y, scale: p.screen.scale * 1100, z: t.z
+                });
+            }
+        }
+    }
+
+    // 3.2 Masukkan Objek Alam/Scenery (Pohon dan Billboard)
+    for(let i=0; i<sceneryObjects.length; i++) {
+        let s = sceneryObjects[i];
+        let dz = s.z - player.z;
+        if(dz > 10 && dz < track.drawDistance * track.segmentLength) {
+            let p = { world: { x: s.x * track.roadWidth, y: 0, z: s.z }, camera: {}, screen: {} };
+            Util.project(p, player.x * track.roadWidth, camera.height, player.z);
+            if(p.camera.z > camera.depth && p.screen.y > 0 && p.screen.y < height + 400) {
+                
+                // SKALA KHUSUS UNTUK OBJEK PINGGIR JALAN
+                let objScale = p.screen.scale * 1100;
+                if(s.type === 'tree') objScale = p.screen.scale * 2200; // Pohon dibuat 2x lebih besar
+                if(s.type === 'billboard') objScale = p.screen.scale * 2500; // Billboard dibuat sangat besar
+                
+                visibleObjects.push({
+                    isTraffic: false, type: s.type, text: s.text,
+                    x: p.screen.x, y: p.screen.y, scale: objScale, z: s.z
+                });
+            }
+        }
+    }
+
+    // Urutkan Objek dari yang paling jauh hingga paling dekat dengan layar (Z-Sorting / Rendering Depan Belakang)
+    visibleObjects.sort((a, b) => b.z - a.z);
+
+    // Gambarkan setiap objek yang berhasil diurutkan
+    for(let i=0; i<visibleObjects.length; i++) {
+        let c = visibleObjects[i];
+        if (c.isTraffic) {
+            VehicleModel.drawCar(ctx, c.type, c.color, c.x, c.y, c.scale, true);
+        } else {
+            if (c.type === 'tree') {
+                EnvironmentModel.drawTree(ctx, c.x, c.y, c.scale);
+            } else if (c.type === 'billboard') {
+                EnvironmentModel.drawBillboard(ctx, c.text, c.x, c.y, c.scale);
+            }
+        }
+    }
+
+    // 4. Draw Player Car
+    // Jika sedang invulnerable, berkedip (skip render berdasarkan waktu)
+    if (state.current === 'PLAYING') {
+        if(player.invulnerable <= 0 || Math.floor(Date.now() / 100) % 2 === 0) {
+            // UKURAN DAN POSISI PLAYER DIIDEALKAN
+            const playerScale = 0.9; 
+            const playerY = height - 80; 
+            const playerScreenX = width / 2; 
+            VehicleModel.drawCar(ctx, player.type, player.color, playerScreenX, playerY, playerScale, false);
+        }
+    }
+
+    ctx.restore(); // Restore dari screen shake
+}
+
+/**
+ * GAME LOOP
+ */
+let lastTime = 0;
+function loop(timestamp) {
+    let dt = (timestamp - lastTime) / 1000;
+    if(dt > 0.1) dt = 0.1; // Limit dt untuk mencegah lonjakan saat tab pindah
+    lastTime = timestamp;
+
+    ctx.clearRect(0, 0, width, height);
+
+    if (state.current === 'PLAYING') {
+        update(dt);
+        loopTrack();
+        render();
+    } else if (state.current === 'MENU' || state.current === 'GARAGE' || state.current === 'GAMEOVER') {
+        // Render demo jalan di belakang menu
+        player.z += 5000 * dt; // Slow auto drive
+        loopTrack(); // Mencegah batas array out-of-bounds saat diam terlalu lama di menu
+        spawnScenery(); // Tetap render pinggir jalan di layar menu
+        Util.updateTheme();
+        render();
+    }
+
+    requestAnimationFrame(loop);
+}
+
+/**
+ * UI & STATE MANAGEMENT
+ */
+const UI = {
+    screens: {
+        MENU: document.getElementById('menu-screen'),
+        GARAGE: document.getElementById('garage-screen'),
+        PLAYING: document.getElementById('hud'),
+        GAMEOVER: document.getElementById('gameover-screen')
+    },
+    hideAll() {
+        Object.values(this.screens).forEach(s => s.classList.add('hidden'));
+        document.getElementById('controls-hint').classList.add('hidden');
+    },
+    show(screenName) {
+        this.hideAll();
+        if(this.screens[screenName]) this.screens[screenName].classList.remove('hidden');
+        if(screenName === 'PLAYING') {
+            document.getElementById('controls-hint').classList.remove('hidden');
+            setTimeout(() => document.getElementById('controls-hint').classList.add('hidden'), 4000);
+        }
+    }
+};
+
+const gameState = {
+    changeState(newState) {
+        state.current = newState;
+        UI.show(newState);
+        
+        // Setup Audio saat user interaksi pertama (kebijakan browser)
+        audio.init();
+
+        if (newState === 'PLAYING') {
+            resetGame();
+            audio.playEngine();
+        } else {
+            audio.stopEngine();
+        }
+
+        if (newState === 'MENU') {
+            player.x = 0; // Center car for background demo
+        }
+
+        if (newState === 'GAMEOVER') {
+            if(state.distance > state.topScore) {
+                state.topScore = state.distance;
+                localStorage.setItem('neon_top_score', state.topScore);
+            }
+            document.getElementById('end-score').innerText = state.distance + " m";
+            document.getElementById('end-top').innerText = state.topScore + " m";
+        }
+
+        if (newState === 'GARAGE') {
+            garage.renderPreviews();
+        }
+    }
+};
+
+const garage = {
+    selectCar(type) {
+        player.type = type;
+        document.querySelectorAll('.car-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById('card-' + type).classList.add('selected');
+        this.renderPreviews();
+    },
+    selectColor(color, el) {
+        player.color = color;
+        document.querySelectorAll('.color-swatch').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        this.renderPreviews();
+    },
+    renderPreviews() {
+        ['sport', 'muscle', 'classic'].forEach(type => {
+            const canvas = document.getElementById('prev-' + type);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Gunakan warna player jika ini card yg dipilih, jika tidak putih
+            const drawColor = (type === player.type) ? player.color : '#aaaaaa';
+            VehicleModel.drawCar(ctx, type, drawColor, canvas.width/2, canvas.height - 20, 0.7, false);
+        });
+    }
+};
+
+function updateHUD() {
+    document.getElementById('hud-score').innerText = state.distance;
+    document.getElementById('hud-top').innerText = Math.max(state.distance, state.topScore);
+    
+    // Update Nyawa (Menggunakan Hati / Love SVG)
+    const heartActive = `<svg viewBox="0 0 32 32" fill="var(--secondary)"><path d="M16 28.27l-2.31-2.1C6.91 19.96 2 15.52 2 10 2 5.58 5.58 2 10 2c2.54 0 4.98 1.18 6 3.07C17.02 3.18 19.46 2 22 2c4.42 0 8 3.58 8 8 0 5.52-4.91 9.96-11.69 16.18L16 28.27z"/></svg>`;
+    const heartLost = `<svg viewBox="0 0 32 32" fill="#555"><path d="M16 28.27l-2.31-2.1C6.91 19.96 2 15.52 2 10 2 5.58 5.58 2 10 2c2.54 0 4.98 1.18 6 3.07C17.02 3.18 19.46 2 22 2c4.42 0 8 3.58 8 8 0 5.52-4.91 9.96-11.69 16.18L16 28.27z"/></svg>`;
+    
+    const livesDiv = document.getElementById('hud-lives');
+    livesDiv.innerHTML = '';
+    for(let i=0; i<3; i++) {
+        const div = document.createElement('div');
+        div.className = 'life-icon' + (i >= state.lives ? ' lost' : '');
+        div.innerHTML = (i >= state.lives) ? heartLost : heartActive;
+        livesDiv.appendChild(div);
+    }
+}
+
+/**
+ * EVENT LISTENERS
+ */
+let leftPressed = false;
+let rightPressed = false;
+
+window.addEventListener('keydown', e => {
+    if(e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        if(!leftPressed) {
+            leftPressed = true;
+            // Pindah jalur ke kiri, dicek agar tidak keluar jalur (-1 mentok)
+            if(state.current === 'PLAYING' && player.laneIndex > 0) player.laneIndex--;
+        }
+        keys.Left = true;
+    }
+    if(e.code === 'ArrowRight' || e.code === 'KeyD') {
+        if(!rightPressed) {
+            rightPressed = true;
+            // Pindah jalur ke kanan, dicek agar tidak keluar jalur (4 mentok)
+            if(state.current === 'PLAYING' && player.laneIndex < LANES.length - 1) player.laneIndex++;
+        }
+        keys.Right = true;
+    }
+});
+
+window.addEventListener('keyup', e => {
+    if(e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        leftPressed = false;
+        keys.Left = false;
+    }
+    if(e.code === 'ArrowRight' || e.code === 'KeyD') {
+        rightPressed = false;
+        keys.Right = false;
+    }
+});
+
+window.addEventListener('resize', () => {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+});
+
+// INITIALIZATION
+resetRoad();
+spawnScenery();
+gameState.changeState('MENU');
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
