@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Adventure Platformer</title>
+    <style>
+        body {
+            margin: 0; padding: 0; background-color: #222;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; font-family: 'Courier New', Courier, monospace; overflow: hidden;
+            user-select: none;
+        }
+        #game-container {
+            position: relative; width: 800px; height: 600px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8); border: 4px solid #fff; border-radius: 8px;
+            background-color: #000;
+        }
+        canvas { display: block; image-rendering: pixelated; }
+        
+        .ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background-color: rgba(0, 0, 0, 0.85); color: white; z-index: 10;
+        }
+        .hidden { display: none !important; }
+        
+        /* Typography & Buttons */
+        h1 {
+            color: #ffcc00; text-shadow: 4px 4px 0px #d82800;
+            font-size: 56px; margin-bottom: 30px; text-align: center; letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        h2 { color: #fff; text-shadow: 3px 3px 0px #000; font-size: 32px; margin-bottom: 20px; }
+        p { font-size: 20px; margin-bottom: 20px; text-align: center; line-height: 1.5; }
+        
+        .btn {
+            background-color: #e52521; color: white; border: 4px solid #fff;
+            padding: 15px 40px; font-size: 24px; font-family: 'Courier New', Courier, monospace;
+            font-weight: bold; cursor: pointer; text-transform: uppercase;
+            box-shadow: 4px 4px 0px #000; transition: transform 0.1s; margin: 10px;
+            min-width: 200px;
+        }
+        .btn:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px #000; }
+        .btn-blue { background-color: #004fe5; }
+        .btn-gray { background-color: #555; }
+        
+        .credits {
+            margin-top: 40px; font-size: 14px; color: #888;
+            letter-spacing: 1px; text-shadow: 1px 1px 0px #000;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute; top: 10px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            color: white; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 0px #000;
+            pointer-events: none; z-index: 5;
+        }
+        .hud-left { display: flex; gap: 30px; }
+        .hud-right { display: flex; gap: 5px; align-items: center; }
+        
+        /* Pixel Heart Icon */
+        .pixel-heart {
+            width: 24px; height: 24px; display: inline-block;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23e52521" d="M1,2h2v-1h-2M3,1h4v1h-4M7,2h2v-1h-2M0,3h10v-1h-10M0,4h10v-1h-10M1,5h8v-1h-8M2,6h6v-1h-6M3,7h4v-1h-4M4,8h2v-1h-2"/></svg>');
+            background-size: cover; image-rendering: pixelated;
+        }
+
+        /* Level Selection Grid */
+        .level-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;
+            max-width: 700px; margin-bottom: 30px;
+        }
+        .level-card {
+            background-color: #c84c0c; border: 4px solid #fff; box-shadow: 4px 4px 0px #000;
+            padding: 10px; text-align: center; cursor: pointer; transition: transform 0.1s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 110px; width: 130px;
+        }
+        .level-card.unlocked:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px #000; }
+        .level-card.locked { background-color: #555; border-color: #888; cursor: not-allowed; }
+        .level-card h3 { margin: 0 0 8px 0; font-size: 20px; color: white; text-shadow: 2px 2px 0px #000; }
+        
+        .stars-container { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; }
+        .stars-container .pixel-heart { width: 14px; height: 14px; }
+        .score-display { font-size: 14px; color: #ffcc00; font-weight: bold; text-shadow: 1px 1px 0px #000; }
+        
+        .lock-icon { font-size: 28px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <!-- Gameplay HUD -->
+    <div id="hud" class="hidden">
+        <div class="hud-left">
+            <div>SCORE: <span id="scoreUI">0</span></div>
+            <div>LEVEL: <span id="levelUI">1</span></div>
+        </div>
+        <div class="hud-right" id="livesUI"></div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="menuScreen" class="ui-layer">
+        <h1>PIXEL ADVENTURE</h1>
+        <button class="btn" onclick="openLevelSelect()">PLAY</button>
+        <button class="btn btn-blue" onclick="openSettings()">SETTINGS</button>
+        <div class="credits">Credit By ALWANU ZAKY RAIHAN</div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settingsScreen" class="ui-layer hidden">
+        <h2>SETTINGS</h2>
+        <p>A / D / Kiri / Kanan : Bergerak<br>W / SPACE / Atas : Lompat<br>S / Bawah : Menunduk</p>
+        <p style="color: #ffcc00;">Data permainan dan skor tersimpan secara otomatis (Local Save).</p>
+        <button class="btn btn-blue" onclick="closeSettings()">KEMBALI</button>
+    </div>
+
+    <!-- Level Selection -->
+    <div id="levelSelectScreen" class="ui-layer hidden">
+        <h2>PILIH LEVEL</h2>
+        <div class="level-grid" id="levelGridUI"></div>
+        <button class="btn btn-gray" onclick="backToMenu()">KEMBALI</button>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameOverScreen" class="ui-layer hidden">
+        <h1>GAME OVER</h1>
+        <p>Anda Kehabisan Nyawa di Level <span id="goLevel">1</span>.</p>
+        <button class="btn" onclick="retryLevel()">COBA LAGI</button>
+        <button class="btn btn-gray" onclick="openLevelSelect()">KEMBALI KE MENU</button>
+    </div>
+
+    <!-- Level Complete -->
+    <div id="levelCompleteScreen" class="ui-layer hidden">
+        <h1 style="color: #4CAF50; text-shadow: 4px 4px 0px #005A00;">LEVEL CLEAR!</h1>
+        <p>Kerja Bagus!</p>
+        <p style="color: #ffcc00; font-weight:bold; font-size:24px;">Score: <span id="lvlScoreUI">0</span></p>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="nextLevel()">LANJUT</button>
+            <button class="btn btn-gray" onclick="openLevelSelect()">MENU</button>
+        </div>
+    </div>
+
+    <!-- Win Screen -->
+    <div id="winScreen" class="ui-layer hidden">
+        <h1 style="color: #4CAF50; text-shadow: 4px 4px 0px #005A00;">YOU WIN!</h1>
+        <p>Semua Level Telah Selesai Ditaklukkan!</p>
+        <p style="color: #ffcc00; font-size:28px; font-weight:bold;">Final Total Score: <span id="finalScoreUI">0</span></p>
+        <button class="btn" onclick="openLevelSelect()">PILIH LEVEL</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    // --- SAVE SYSTEM (LOCAL STORAGE) ---
+    const SAVE_KEY = 'PixelAdventureSaveData';
+    let saveProgress = {
+        unlockedLevel: 0,
+        levelStars: {},    // Best Lives per level
+        levelScores: {}    // Best Score per level
+    };
+
+    function loadSaveData() {
+        const data = localStorage.getItem(SAVE_KEY);
+        if (data) {
+            try {
+                saveProgress = JSON.parse(data);
+                if (!saveProgress.levelScores) saveProgress.levelScores = {}; // Untuk legacy save
+            } catch(e) { console.error("Save data rusak", e); }
+        }
+    }
+
+    function saveGame() {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(saveProgress));
+    }
+
+    // --- ENGINE CONSTANTS ---
+    const GRAVITY = 0.5;
+    const JUMP_FORCE = -14.5;
+    const MAX_FALL_SPEED = 16;
+    const PLAYER_SPEED = 5;
+    const FRICTION = 0.85;
+    const ACCELERATION = 1.0;
+    const TILE_SIZE = 40;
+    const MAX_LIVES = 3;
+
+    // --- GAME STATE ---
+    let gameState = 'MENU'; // PLAYING, FLAG_ANIM, GAMEOVER, dll.
+    let currentLevelIdx = 0;
+    let score = 0;
+    let lives = MAX_LIVES;
+    let frameCount = 0;
+
+    const camera = { x: 0, y: 0 };
+    const keys = { left: false, right: false, jump: false, crouch: false };
+
+    // --- INPUT LISTENER ---
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+        if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+            if (!keys.jump && gameState === 'PLAYING') player.jump();
+            keys.jump = true;
+            if(e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') e.preventDefault(); 
+        }
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.crouch = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+        if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.jump = false;
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.crouch = false;
+    });
+
+    /**
+     * ENTITY CLASSES
+     */
+    class Player {
+        constructor(x, y) {
+            this.startX = x; this.startY = y;
+            this.x = x; this.y = y;
+            this.width = 24; this.height = 36;
+            this.normalHeight = 36; this.crouchHeight = 20;
+            this.vx = 0; this.vy = 0;
+            this.isGrounded = false;
+            this.facingRight = true;
+            this.isInvincible = false;
+            this.invincibleTimer = 0;
+            this.isDead = false;
+        }
+
+        update() {
+            if (this.isDead) {
+                this.vy += GRAVITY; this.y += this.vy; return;
+            }
+
+            if (keys.left && !keys.crouch) {
+                this.vx -= ACCELERATION; this.facingRight = false;
+            } else if (keys.right && !keys.crouch) {
+                this.vx += ACCELERATION; this.facingRight = true;
+            } else {
+                this.vx *= FRICTION;
+            }
+
+            if (this.vx > PLAYER_SPEED) this.vx = PLAYER_SPEED;
+            if (this.vx < -PLAYER_SPEED) this.vx = -PLAYER_SPEED;
+            if (Math.abs(this.vx) < 0.1) this.vx = 0;
+
+            if (keys.crouch && this.isGrounded) {
+                if (this.height !== this.crouchHeight) {
+                    this.y += (this.normalHeight - this.crouchHeight);
+                    this.height = this.crouchHeight;
+                }
+                this.vx *= 0.5;
+            } else {
+                if (this.height !== this.normalHeight) {
+                    let canStand = true;
+                    let tempBox = { x: this.x, y: this.y - (this.normalHeight - this.crouchHeight), width: this.width, height: this.normalHeight };
+                    for (let block of level.blocks) { if (checkAABB(tempBox, block)) canStand = false; }
+                    if (canStand) {
+                        this.y -= (this.normalHeight - this.crouchHeight);
+                        this.height = this.normalHeight;
+                    } else { this.vx *= 0.5; }
+                }
+            }
+
+            this.x += this.vx; this.handleCollisions('x');
+            this.vy += GRAVITY; if (this.vy > MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
+            this.y += this.vy; this.isGrounded = false; this.handleCollisions('y');
+
+            if (this.y > canvas.height + 100) takeDamage();
+            if (this.x < 0) this.x = 0;
+
+            if (this.isInvincible) {
+                this.invincibleTimer--;
+                if (this.invincibleTimer <= 0) this.isInvincible = false;
+            }
+        }
+
+        jump() {
+            if (this.isGrounded && !keys.crouch) {
+                this.vy = JUMP_FORCE;
+                this.isGrounded = false;
+            }
+        }
+
+        handleCollisions(axis) {
+            for (let block of level.blocks) {
+                if (checkAABB(this, block)) {
+                    if (axis === 'x') {
+                        if (this.vx > 0) this.x = block.x - this.width;
+                        else if (this.vx < 0) this.x = block.x + block.width;
+                        this.vx = 0;
+                    } else if (axis === 'y') {
+                        if (this.vy > 0) { // Landing / Menginjak
+                            this.y = block.y - this.height;
+                            this.vy = 0;
+                            this.isGrounded = true;
+                            
+                            // MEKANIK BARU: Jika menginjak Mystery Box dari atas
+                            if (block.type === 'mystery' && !block.isHit) {
+                                block.hit(); 
+                                this.vy = -6; // Sedikit mumbul saat menginjak boks
+                            }
+                        } else if (this.vy < 0) { // Menyundul dari bawah
+                            this.y = block.y + block.height;
+                            this.vy = 0;
+                            if (block.type === 'mystery' && !block.isHit) {
+                                block.hit();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        draw() {
+            if (this.isInvincible && Math.floor(frameCount / 5) % 2 === 0) return;
+
+            ctx.save();
+            if (!this.facingRight) { ctx.translate(this.x + this.width, this.y); ctx.scale(-1, 1); } 
+            else { ctx.translate(this.x, this.y); }
+
+            const w = this.width; const h = this.height;
+            ctx.lineWidth = 2; ctx.strokeStyle = '#000';
+
+            if (this.height === this.normalHeight) {
+                ctx.fillStyle = '#ffcc99'; ctx.fillRect(4, 0, w - 8, 12); ctx.strokeRect(4, 0, w - 8, 12);
+                ctx.fillStyle = '#e52521'; ctx.fillRect(2, -2, w - 4, 6); ctx.strokeRect(2, -2, w - 4, 6); ctx.fillRect(w - 6, 4, 8, 4);
+                ctx.fillStyle = '#000'; ctx.fillRect(14, 4, 3, 3);
+                ctx.fillStyle = '#e52521'; ctx.fillRect(2, 12, w - 4, 12); ctx.strokeRect(2, 12, w - 4, 12);
+                ctx.fillStyle = '#004fe5'; ctx.fillRect(4, 18, w - 8, 10); ctx.strokeRect(4, 18, w - 8, 10);
+                ctx.fillStyle = '#ffcc00'; ctx.fillRect(6, 20, 2, 2); ctx.fillRect(w - 8, 20, 2, 2);
+
+                let walkOffset = 0;
+                if (!this.isGrounded) walkOffset = 2;
+                else if (Math.abs(this.vx) > 0.5) walkOffset = (Math.floor(frameCount / 5) % 2) * 4;
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(2, 28 - walkOffset, 8, 8); ctx.fillRect(14, 28 + walkOffset, 8, 8);
+            } else {
+                ctx.fillStyle = '#e52521'; ctx.fillRect(2, 0, w - 4, h); ctx.strokeRect(2, 0, w - 4, h);
+                ctx.fillStyle = '#ffcc99'; ctx.fillRect(8, 4, w - 12, 6);
+                ctx.fillStyle = '#000'; ctx.fillRect(14, 6, 2, 2);
+                ctx.fillStyle = '#000'; ctx.fillRect(0, h - 4, 10, 4); ctx.fillRect(w - 10, h - 4, 10, 4);
+            }
+            ctx.restore();
+        }
+    }
+
+    class Block {
+        constructor(x, y, w, h, type) {
+            this.x = x; this.y = y; this.width = w; this.height = h; this.type = type;
+            this.isHit = false; this.bounceY = 0;
+        }
+
+        update() {
+            if (this.bounceY < 0) this.bounceY += 1.5;
+            if (this.bounceY > 0) this.bounceY = 0;
+        }
+
+        hit() {
+            if (!this.isHit) {
+                this.isHit = true;
+                this.bounceY = -12; 
+                
+                let rand = Math.random();
+                if (rand < 0.35 && lives < MAX_LIVES) { // Hadiah Hati
+                    level.particles.push(new FloatingReward(this.x, this.y, 'life'));
+                    lives++; updateHUD();
+                } else { // Hadiah Skor
+                    score += 150; updateHUD();
+                    level.particles.push(new FloatingReward(this.x, this.y, 'coin'));
+                }
+            }
+        }
+
+        draw() {
+            ctx.lineWidth = 2; ctx.strokeStyle = '#000';
+            let drawY = this.y + this.bounceY;
+            
+            if (this.type === 'ground') {
+                ctx.fillStyle = '#c84c0c'; ctx.fillRect(this.x, drawY, this.width, this.height); ctx.strokeRect(this.x, drawY, this.width, this.height);
+                ctx.fillStyle = '#00a800'; ctx.fillRect(this.x, drawY, this.width, 8); ctx.strokeRect(this.x, drawY, this.width, 8);
+                ctx.fillStyle = '#000';
+                for(let i=0; i<this.width/TILE_SIZE; i++) {
+                    ctx.fillRect(this.x + i*TILE_SIZE + 10, drawY + 15, 4, 4); ctx.fillRect(this.x + i*TILE_SIZE + 25, drawY + 25, 4, 4);
+                }
+            } else if (this.type === 'brick') {
+                ctx.fillStyle = '#c84c0c'; ctx.fillRect(this.x, drawY, this.width, this.height); ctx.strokeRect(this.x, drawY, this.width, this.height);
+                ctx.strokeStyle = '#000'; ctx.beginPath();
+                ctx.moveTo(this.x, drawY + this.height/2); ctx.lineTo(this.x + this.width, drawY + this.height/2);
+                ctx.moveTo(this.x + this.width/2, drawY); ctx.lineTo(this.x + this.width/2, drawY + this.height/2);
+                ctx.moveTo(this.x + this.width/4, drawY + this.height/2); ctx.lineTo(this.x + this.width/4, drawY + this.height);
+                ctx.moveTo(this.x + 3*this.width/4, drawY + this.height/2); ctx.lineTo(this.x + 3*this.width/4, drawY + this.height); ctx.stroke();
+            } else if (this.type === 'mystery') {
+                if (this.isHit) {
+                    ctx.fillStyle = '#885500'; ctx.fillRect(this.x, drawY, this.width, this.height); ctx.strokeRect(this.x, drawY, this.width, this.height);
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(this.x+4, drawY+4, 4, 4); ctx.fillRect(this.x+this.width-8, drawY+4, 4, 4);
+                    ctx.fillRect(this.x+4, drawY+this.height-8, 4, 4); ctx.fillRect(this.x+this.width-8, drawY+this.height-8, 4, 4);
+                } else {
+                    ctx.fillStyle = (Math.floor(frameCount / 15) % 2 === 0) ? '#f8d820' : '#e8a200';
+                    ctx.fillRect(this.x, drawY, this.width, this.height); ctx.strokeRect(this.x, drawY, this.width, this.height);
+                    ctx.fillStyle = '#c84c0c'; ctx.font = 'bold 28px Courier New'; ctx.fillText('?', this.x + 10, drawY + 30);
+                }
+            } else if (this.type === 'pipe') {
+                ctx.fillStyle = '#00a800'; ctx.fillRect(this.x, drawY, this.width, this.height); ctx.strokeRect(this.x, drawY, this.width, this.height);
+                ctx.fillStyle = '#80d010'; ctx.fillRect(this.x + 4, drawY, 8, this.height);
+                let isTop = !level.blocks.some(b => b.type === 'pipe' && b.x === this.x && b.y === this.y - TILE_SIZE);
+                if (isTop) {
+                    ctx.fillStyle = '#00a800'; ctx.fillRect(this.x - 2, drawY, this.width + 4, 16); ctx.strokeRect(this.x - 2, drawY, this.width + 4, 16);
+                    ctx.fillStyle = '#80d010'; ctx.fillRect(this.x + 4, drawY, 8, 16);
+                }
+            }
+        }
+    }
+
+    class FloatingReward {
+        constructor(x, y, type) {
+            this.x = x + 10; this.y = y - 10;
+            this.vy = -7;
+            this.timer = type === 'life' ? 45 : 25; 
+            this.type = type;
+        }
+        update() {
+            this.y += this.vy;
+            if(this.type === 'coin') this.vy += 0.5; else this.vy += 0.2; 
+            this.timer--;
+        }
+        draw() {
+            if (this.timer > 0) {
+                if(this.type === 'coin') {
+                    ctx.fillStyle = '#f8d820'; ctx.beginPath(); ctx.ellipse(this.x + 10, this.y + 10, 10, 14, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
+                } else if(this.type === 'life') {
+                    ctx.fillStyle = '#e52521';
+                    ctx.fillRect(this.x+2, this.y, 6, 6); ctx.fillRect(this.x+12, this.y, 6, 6);
+                    ctx.fillRect(this.x, this.y+6, 20, 6); ctx.fillRect(this.x+2, this.y+12, 16, 6); ctx.fillRect(this.x+6, this.y+18, 8, 6);
+                    ctx.font = '14px Courier New'; ctx.fillStyle = 'white'; ctx.fillText('+1', this.x, this.y-5);
+                }
+            }
+        }
+    }
+
+    class Coin {
+        constructor(x, y) {
+            this.x = x + 10; this.y = y + 10; this.width = 20; this.height = 20; this.collected = false;
+        }
+        draw() {
+            if (this.collected) return;
+            const animY = Math.sin(frameCount * 0.1) * 3;
+            ctx.fillStyle = '#f8d820'; ctx.beginPath(); ctx.ellipse(this.x + 10, this.y + 10 + animY, 10, 14, 0, 0, Math.PI*2); ctx.fill();
+            ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
+            ctx.fillStyle = '#e8a200'; ctx.beginPath(); ctx.ellipse(this.x + 10, this.y + 10 + animY, 4, 8, 0, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
+    class Enemy {
+        constructor(x, y) {
+            this.x = x; this.y = y; this.width = 30; this.height = 30;
+            this.vx = -1.5; this.vy = 0; this.isDead = false; this.deadTimer = 0;
+        }
+        update() {
+            if (this.isDead) { this.deadTimer++; return; }
+            this.vy += GRAVITY; if (this.vy > MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
+            this.x += this.vx;
+            let hitWall = false;
+            for (let block of level.blocks) {
+                if (checkAABB(this, block)) {
+                    if (this.vx > 0) { this.x = block.x - this.width; hitWall = true; } 
+                    else if (this.vx < 0) { this.x = block.x + block.width; hitWall = true; }
+                }
+            }
+            if (hitWall) this.vx *= -1;
+
+            this.y += this.vy;
+            for (let block of level.blocks) {
+                if (checkAABB(this, block)) {
+                    if (this.vy > 0) { this.y = block.y - this.height; this.vy = 0; }
+                }
+            }
+
+            if (!player.isDead && !player.isInvincible && checkAABB(this, player)) {
+                if (player.vy > 0 && player.y + player.height < this.y + 15) {
+                    this.isDead = true; player.vy = JUMP_FORCE * 0.8;
+                    score += 100; updateHUD();
+                } else takeDamage();
+            }
+        }
+        draw() {
+            if (this.deadTimer > 30) return;
+            ctx.save(); ctx.translate(this.x, this.y);
+            if (this.isDead) {
+                ctx.fillStyle = '#a04000'; ctx.fillRect(0, 20, this.width, 10); ctx.strokeRect(0, 20, this.width, 10);
+            } else {
+                ctx.fillStyle = '#a04000'; ctx.beginPath(); ctx.arc(15, 15, 15, Math.PI, 0); ctx.fill();
+                ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
+                ctx.fillStyle = '#fcb080'; ctx.fillRect(8, 15, 14, 10); ctx.strokeRect(8, 15, 14, 10);
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(10, 8); ctx.lineTo(14, 12); ctx.lineTo(12, 12); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(20, 8); ctx.lineTo(16, 12); ctx.lineTo(18, 12); ctx.fill();
+                let step = (Math.floor(frameCount / 10) % 2) === 0 ? 0 : 2;
+                ctx.fillRect(4 + step, 25, 8, 5); ctx.fillRect(18 - step, 25, 8, 5);
+            }
+            ctx.restore();
+        }
+    }
+
+    class PiranhaPlant {
+        constructor(x, y) {
+            this.x = x + 5; this.y = y; this.width = 30; this.height = 40;
+            this.offsetY = 40; this.timer = 0; this.state = 'HIDDEN';
+        }
+        update() {
+            this.timer++;
+            if (this.state === 'HIDDEN' && this.timer > 100) { this.state = 'RISING'; this.timer = 0; } 
+            else if (this.state === 'RISING') { this.offsetY -= 1; if (this.offsetY <= -15) { this.state = 'VISIBLE'; this.timer = 0; } } 
+            else if (this.state === 'VISIBLE' && this.timer > 80) { this.state = 'HIDING'; this.timer = 0; } 
+            else if (this.state === 'HIDING') { this.offsetY += 1; if (this.offsetY >= 40) { this.state = 'HIDDEN'; this.timer = 0; } }
+
+            if (this.state !== 'HIDDEN' && !player.isDead && !player.isInvincible) {
+                let plantBox = { x: this.x, y: this.y + this.offsetY, width: this.width, height: 30 };
+                if (checkAABB(player, plantBox)) takeDamage();
+            }
+        }
+        draw() {
+            if (this.offsetY >= 40) return;
+            let drawY = this.y + this.offsetY;
+            ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = '#000';
+            ctx.fillStyle = '#00a800'; ctx.fillRect(this.x + 10, drawY + 15, 10, 30); ctx.strokeRect(this.x + 10, drawY + 15, 10, 30);
+            ctx.fillStyle = '#e52521'; ctx.beginPath(); ctx.arc(this.x + 15, drawY + 15, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.fillRect(this.x + 1, drawY + 12, 28, 4); ctx.strokeRect(this.x + 1, drawY + 12, 28, 4);
+            ctx.fillRect(this.x + 6, drawY + 4, 4, 4); ctx.fillRect(this.x + 18, drawY + 6, 4, 4); ctx.fillRect(this.x + 14, drawY + 22, 4, 4);
+            ctx.restore();
+        }
+    }
+
+    class Goal {
+        constructor(x, y) { 
+            this.x = x; this.y = y; this.width = 40; this.height = 360; 
+            // Posisi awal bendera di bawah
+            this.flagY = this.y + this.height - 40; 
+        }
+        draw() {
+            ctx.fillStyle = '#fff'; ctx.fillRect(this.x + 16, this.y, 8, this.height); ctx.strokeRect(this.x + 16, this.y, 8, this.height);
+            ctx.fillStyle = '#f8d820'; ctx.beginPath(); ctx.arc(this.x + 20, this.y, 12, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            
+            // Bendera Merah Finish
+            const animWave = Math.sin(frameCount * 0.1) * 5;
+            ctx.fillStyle = '#00a800'; ctx.beginPath();
+            ctx.moveTo(this.x - 24, this.flagY); ctx.lineTo(this.x + 16, this.flagY);
+            ctx.lineTo(this.x + 16, this.flagY + 40); ctx.lineTo(this.x - 24 + animWave, this.flagY + 40);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+    }
+
+    /**
+     * UTILITIES & MAPS
+     */
+    function checkAABB(rect1, rect2) {
+        return (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y);
+    }
+    function lerp(start, end, amt) { return (1 - amt) * start + amt * end; }
+
+    let player;
+    let level = { blocks: [], coins: [], enemies: [], particles: [], goal: null };
+
+    // 8 LEVEL DENGAN TINGKAT KESULITAN MENINGKAT
+    const levelsData = [
+        [ // Level 1: Pengenalan Dasar (Lebar ~45)
+            "                                                  ",
+            "                                                  ",
+            "                                                  ",
+            "                                                  ",
+            "                                                  ",
+            "                                        ?         ",
+            "                                       ===        ",
+            "               ?                                  ",
+            "         ?           E                            ",
+            "        ===       =======                         ",
+            "                                                  ",
+            "  @                                            F  ",
+            "######   #######   #######  P   P ##################",
+            "######   #######   #######  P   P ##################",
+            "######   #######   #######  P   P ##################"
+        ],
+        [ // Level 2: Piranha & Loncatan Menengah (Lebar ~55)
+            "                                                                ",
+            "                                                                ",
+            "                                                                ",
+            "                                                                ",
+            "                                        ?                       ",
+            "                                       ===                      ",
+            "               C   ?                             C   C          ",
+            "              === === ===               W       =======         ",
+            "                                        P                       ",
+            "                                  E     P                       ",
+            "                                P P P   P                    F  ",
+            "  @                             P P P   P   W                #  ",
+            "#######   #####       ######### P P P   P   P   ################",
+            "#######   #####       ######### P P P   P   P   ################",
+            "#######   #####       ######### P P P   P   P   ################"
+        ],
+        [ // Level 3: Parkour Bata (Lebar ~65)
+            "                                                                           ",
+            "                                                                           ",
+            "                                                                           ",
+            "                                          C ? C                            ",
+            "                                         =======                           ",
+            "                                                           ?               ",
+            "                 ?    ===                                 ===              ",
+            "                ===                C           ===                         ",
+            "                          E       ===                                      ",
+            "        ===            #######                            E                ",
+            "                                 P P P           P      P P P              ",
+            "                                 P P P     W     P      P P P              ",
+            "  @                     E        P P P     P     P      P P P           F  ",
+            "#####     #####   ############   P P P   #####   P      P P P   ###########",
+            "#####     #####   ############   P P P   #####   P      P P P   ###########"
+        ],
+        [ // Level 4: Jembatan Koin Tinggi (Aman Dijangkau, Lebar ~70)
+            "                                                                           ",
+            "                                                                           ",
+            "                 C  C  C               ?                                   ",
+            "                ==========            ===                                  ",
+            "                                                                           ",
+            "         ===                  C  C               E                         ",
+            "                             ======           =======                      ",
+            "                                                          ?                ",
+            "                                                         ===               ",
+            "      E                                                                    ",
+            "    =====                                                       P          ",
+            "                                        W                       P          ",
+            "  @                                     P                       P       F  ",
+            "######        #####       #####         P          ##############       ###",
+            "######        #####       #####         P          ##############       ###"
+        ],
+        [ // Level 5: Invasi Jamur (Lebar ~75)
+            "                                                                           ",
+            "                                                                           ",
+            "                                                                           ",
+            "                                ?       ?       ?                          ",
+            "                               ===     ===     ===                         ",
+            "                                                                           ",
+            "             E       E                                        E            ",
+            "           =====   =====                                    ======         ",
+            "                                                                           ",
+            "       W                   W                   W                           ",
+            "       P                   P                   P                           ",
+            "       P                   P                   P                           ",
+            "  @    P                   P                   P                        F  ",
+            "####   P   #####   #####   P   #####   #####   P   #####   ################",
+            "####   P   #####   #####   P   #####   #####   P   #####   ################"
+        ],
+        [ // Level 6: Tangga Pipa (Lebar ~80)
+            "                                                                                ",
+            "                                                                                ",
+            "                                                                                ",
+            "                                                                                ",
+            "                                                                                ",
+            "                                                       ?                        ",
+            "                                                      ===                       ",
+            "                                                                                ",
+            "                                           W                                    ",
+            "                                           P   E                                ",
+            "                                W          P =====         P                    ",
+            "                     W          P          P               P                 F  ",
+            "  @       E          P          P          P               P   E             #  ",
+            "####### #####      #####      #####      #####           #######################",
+            "####### #####      #####      #####      #####           #######################"
+        ],
+        [ // Level 7: Melompat Di Atas Tanah Kosong (Lebar ~85)
+            "                                                                                     ",
+            "                                                                                     ",
+            "                                                                                     ",
+            "                                                                                     ",
+            "                         C C C          ?           C C C                            ",
+            "                        =======        ===         =======                           ",
+            "                                                                                     ",
+            "            ?                                                    ?                   ",
+            "           ===                                                  ===                  ",
+            "                                                                                     ",
+            "                                                                                     ",
+            "      ===        ===             ===         ===                                     ",
+            "  @                                                        E                      F  ",
+            "#####      ##          ##              ##          ##################################",
+            "#####      ##          ##              ##          ##################################"
+        ],
+        [ // Level 8: Ujian Akhir Kastil Udara (Lebar ~90)
+            "                                                                                          ",
+            "                                                                                          ",
+            "                                  ?                                                       ",
+            "                                 ===                                                      ",
+            "                      ?   ?               ?   ?                                           ",
+            "                     === ===             === ===                                          ",
+            "                                                                                          ",
+            "            C C C                                 C C C                                   ",
+            "           =======                               =======                                  ",
+            "                                E   E                                                     ",
+            "                              =========                                                   ",
+            "                                                                                          ",
+            "  @                                                                                    F  ",
+            "######                                                                              ######",
+            "######        P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P     ######",
+            "######        P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P P     ######"
+        ]
+    ];
+
+    function loadLevel(idx) {
+        level.blocks = []; level.coins = []; level.enemies = []; level.particles = []; level.goal = null;
+        const map = levelsData[idx];
+        const rows = map.length;
+        camera.x = 0; camera.y = 0;
+
+        for (let y = 0; y < rows; y++) {
+            let line = map[y];
+            for (let x = 0; x < line.length; x++) {
+                let char = line[x];
+                let px = x * TILE_SIZE; let py = y * TILE_SIZE;
+                
+                if (char === '#') level.blocks.push(new Block(px, py, TILE_SIZE, TILE_SIZE, 'ground'));
+                if (char === 'P') level.blocks.push(new Block(px, py, TILE_SIZE, TILE_SIZE, 'pipe'));
+                if (char === 'C') level.coins.push(new Coin(px, py));
+                if (char === 'E') level.enemies.push(new Enemy(px, py));
+                if (char === 'W') level.enemies.push(new PiranhaPlant(px, py));
+                if (char === 'F') level.goal = new Goal(px, py - 320);
+                if (char === '@') player = new Player(px, py);
+                
+                // RANDOMISASI BLIND BOX/MYSTERY BOX: 
+                // Membuat mystery box langka dan kadang bertukar posisi dengan brick biasa.
+                if (char === '=') {
+                    if (Math.random() < 0.08) { // 8% peluang bata biasa menjadi mystery box
+                        level.blocks.push(new Block(px, py, TILE_SIZE, TILE_SIZE, 'mystery'));
+                    } else {
+                        level.blocks.push(new Block(px, py, TILE_SIZE, TILE_SIZE, 'brick'));
+                    }
+                }
+                if (char === '?') {
+                    if (Math.random() < 0.3) { // 30% peluang mystery box asli gagal muncul (jadi bata biasa)
+                        level.blocks.push(new Block(px, py, TILE_SIZE, TILE_SIZE, 'brick'));
+                    } else {
+                        level.blocks.push(new Block(px, py, TILE_SIZE, TILE_SIZE, 'mystery'));
+                    }
+                }
+            }
+        }
+    }
+
+    // --- UI UPDATES & SYSTEM EVENTS ---
+    function updateHUD() {
+        document.getElementById('scoreUI').innerText = score;
+        document.getElementById('levelUI').innerText = currentLevelIdx + 1;
+        
+        let heartsHTML = '';
+        for(let i=0; i<lives; i++) heartsHTML += '<div class="pixel-heart"></div>';
+        document.getElementById('livesUI').innerHTML = heartsHTML;
+    }
+
+    function hideAllScreens() {
+        document.querySelectorAll('.ui-layer').forEach(el => el.classList.add('hidden'));
+        document.getElementById('hud').classList.add('hidden');
+    }
+
+    function openSettings() {
+        document.getElementById('menuScreen').classList.add('hidden');
+        document.getElementById('settingsScreen').classList.remove('hidden');
+    }
+    function closeSettings() {
+        document.getElementById('settingsScreen').classList.add('hidden');
+        document.getElementById('menuScreen').classList.remove('hidden');
+    }
+
+    function backToMenu() {
+        hideAllScreens();
+        document.getElementById('menuScreen').classList.remove('hidden');
+        gameState = 'MENU';
+    }
+
+    function openLevelSelect() {
+        loadSaveData(); 
+        hideAllScreens();
+        document.getElementById('levelSelectScreen').classList.remove('hidden');
+        
+        const grid = document.getElementById('levelGridUI');
+        grid.innerHTML = '';
+        
+        for(let i=0; i<levelsData.length; i++) {
+            let isUnlocked = i <= saveProgress.unlockedLevel;
+            let bestLives = saveProgress.levelStars[i] || 0;
+            let bestScore = saveProgress.levelScores[i] || 0;
+            
+            let card = document.createElement('div');
+            card.className = 'level-card ' + (isUnlocked ? 'unlocked' : 'locked');
+            
+            if(isUnlocked) {
+                let heartsHtml = '';
+                for(let h=0; h<bestLives; h++) heartsHtml += '<div class="pixel-heart"></div>';
+                
+                card.innerHTML = `
+                    <h3>LEVEL ${i+1}</h3>
+                    <div class="stars-container">${heartsHtml}</div>
+                    <div class="score-display">BEST: ${bestScore}</div>
+                `;
+                card.onclick = () => startLevel(i);
+            } else {
+                card.innerHTML = `<h3>LEVEL ${i+1}</h3><div class="lock-icon">🔒</div>`;
+            }
+            grid.appendChild(card);
+        }
+        gameState = 'LEVEL_SELECT';
+    }
+
+    function startLevel(idx) {
+        hideAllScreens();
+        document.getElementById('hud').classList.remove('hidden');
+        currentLevelIdx = idx;
+        score = 0; 
+        lives = MAX_LIVES; 
+        updateHUD();
+        loadLevel(currentLevelIdx);
+        gameState = 'PLAYING';
+    }
+
+    function retryLevel() {
+        hideAllScreens();
+        document.getElementById('hud').classList.remove('hidden');
+        score = 0;
+        lives = MAX_LIVES; 
+        updateHUD();
+        loadLevel(currentLevelIdx);
+        gameState = 'PLAYING';
+    }
+
+    function nextLevel() {
+        if(currentLevelIdx < levelsData.length - 1) {
+            startLevel(currentLevelIdx + 1);
+        } else {
+            openLevelSelect();
+        }
+    }
+
+    function takeDamage() {
+        if (player.isInvincible || player.isDead || gameState !== 'PLAYING') return;
+        lives--; updateHUD();
+        player.vy = JUMP_FORCE; player.isDead = true;
+        
+        setTimeout(() => {
+            if (lives > 0) {
+                player = new Player(player.startX, player.startY);
+                player.isInvincible = true; player.invincibleTimer = 120;
+            } else {
+                gameState = 'GAMEOVER'; 
+                document.getElementById('goLevel').innerText = currentLevelIdx + 1;
+                document.getElementById('gameOverScreen').classList.remove('hidden');
+            }
+        }, 1500);
+    }
+
+    function checkWinCondition() {
+        if (level.goal && checkAABB(player, level.goal) && !player.isDead && gameState === 'PLAYING') {
+            gameState = 'FLAG_ANIM';
+            score += 500; updateHUD();
+            player.vx = 0; player.vy = 0; // Freeze player untuk nonton bendera
+        }
+    }
+
+    function completeLevelUI() {
+        // SIMPAN PROGRES LOKAL (BEST LIVES & BEST SCORE)
+        saveProgress.unlockedLevel = Math.max(saveProgress.unlockedLevel, currentLevelIdx + 1);
+        saveProgress.levelStars[currentLevelIdx] = Math.max(saveProgress.levelStars[currentLevelIdx] || 0, lives);
+        saveProgress.levelScores[currentLevelIdx] = Math.max(saveProgress.levelScores[currentLevelIdx] || 0, score);
+        saveGame();
+
+        if (currentLevelIdx < levelsData.length - 1) {
+            document.getElementById('lvlScoreUI').innerText = score;
+            document.getElementById('levelCompleteScreen').classList.remove('hidden');
+        } else {
+            // Tamat
+            let finalScore = 0;
+            for(let key in saveProgress.levelScores) finalScore += saveProgress.levelScores[key];
+            document.getElementById('finalScoreUI').innerText = finalScore;
+            document.getElementById('winScreen').classList.remove('hidden');
+        }
+    }
+
+    // --- GAME LOOP ---
+    function update() {
+        // Logika saat naikkan bendera finish
+        if (gameState === 'FLAG_ANIM') {
+            if (level.goal.flagY > level.goal.y + 20) {
+                level.goal.flagY -= 3; // Animasi Bendera Naik
+            } else {
+                gameState = 'LEVEL_TRANSITION';
+                setTimeout(() => completeLevelUI(), 500); // Jeda sejenak sebelum UI muncul
+            }
+            return;
+        }
+
+        if (gameState !== 'PLAYING') return;
+
+        player.update();
+        for (let enemy of level.enemies) enemy.update();
+        for (let block of level.blocks) block.update();
+        for (let i = level.particles.length - 1; i >= 0; i--) {
+            level.particles[i].update();
+            if (level.particles[i].timer <= 0) level.particles.splice(i, 1);
+        }
+        for (let coin of level.coins) {
+            if (!coin.collected && checkAABB(player, coin) && !player.isDead) {
+                coin.collected = true; score += 50; updateHUD();
+            }
+        }
+
+        let targetCamX = player.x - canvas.width / 3;
+        if (targetCamX < 0) targetCamX = 0;
+        camera.x = lerp(camera.x, targetCamX, 0.1);
+        camera.x = Math.floor(camera.x);
+
+        checkWinCondition();
+    }
+
+    function draw() {
+        ctx.fillStyle = '#5c94fc'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#ffffff';
+        let bgOffset = -(camera.x * 0.2) % 600;
+        for(let i=0; i<10; i++) { // Lebih banyak awan untuk map panjang
+            ctx.fillRect(bgOffset + i*400 + 100, 100, 60, 30);
+            ctx.fillRect(bgOffset + i*400 + 120, 80, 40, 30);
+            ctx.fillRect(bgOffset + i*400 + 160, 110, 40, 20);
+        }
+
+        if (gameState === 'MENU' || gameState === 'LEVEL_SELECT') return;
+
+        ctx.save(); ctx.translate(-camera.x, 0);
+
+        if (level.goal) level.goal.draw();
+        for (let coin of level.coins) coin.draw();
+        
+        for (let enemy of level.enemies) {
+            if (enemy instanceof PiranhaPlant && enemy.x + enemy.width > camera.x && enemy.x < camera.x + canvas.width) enemy.draw();
+        }
+        for (let block of level.blocks) {
+            if (block.x + block.width > camera.x && block.x < camera.x + canvas.width) block.draw();
+        }
+        for (let enemy of level.enemies) {
+            if (!(enemy instanceof PiranhaPlant) && enemy.deadTimer <= 30 && enemy.x + enemy.width > camera.x && enemy.x < camera.x + canvas.width) enemy.draw();
+        }
+        for (let particle of level.particles) particle.draw();
+
+        player.draw();
+        ctx.restore();
+    }
+
+    function gameLoop() {
+        update(); draw(); frameCount++;
+        requestAnimationFrame(gameLoop);
+    }
+
+    loadSaveData(); 
+    requestAnimationFrame(gameLoop);
+
+</script>
+</body>
+</html>
