@@ -3,92 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alwanu Game Hub</title>
+    <title>Alwanu Game Studio | Portofolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #0f172a; /* Slate 900 */
+            --card-bg: rgba(30, 41, 59, 0.7); /* Slate 800 transparent */
+            --primary: #8b5cf6; /* Violet 500 */
+            --primary-hover: #7c3aed; /* Violet 600 */
+            --accent: #10b981; /* Emerald 500 */
+            --text-main: #f8fafc; /* Slate 50 */
+            --text-muted: #cbd5e1; /* Slate 300 */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1a1a2e;
-            color: #ffffff;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* --- Animasi Background (Floating Ornaments) --- */
+        .bg-ornament {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            animation: float 10s infinite alternate ease-in-out;
+        }
+        .ornament-1 {
+            width: 300px; height: 300px;
+            background: rgba(139, 92, 246, 0.3);
+            top: -10%; left: -5%;
+        }
+        .ornament-2 {
+            width: 400px; height: 400px;
+            background: rgba(16, 185, 129, 0.2);
+            bottom: -10%; right: -5%;
+            animation-delay: -5s;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, 50px) scale(1.2); }
+        }
+
+        /* --- Header & Profil --- */
+        header {
+            text-align: center;
+            padding: 4rem 2rem 2rem;
+        }
+
+        .profile-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.8s ease-out;
+        }
+
+        header h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            animation: fadeIn 1.2s ease-out;
+        }
+
+        /* --- Grid Layout Game --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding-bottom: 4rem;
+        }
+
+        /* --- Card Design (Glassmorphism + Neon Hover) --- */
+        .game-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            animation: scaleUp 0.6s backwards;
+        }
+
+        /* Delay animasi tiap kartu agar berurutan munculnya */
+        .game-card:nth-child(1) { animation-delay: 0.2s; }
+        .game-card:nth-child(2) { animation-delay: 0.4s; }
+        .game-card:nth-child(3) { animation-delay: 0.6s; }
+        .game-card:nth-child(4) { animation-delay: 0.8s; }
+        .game-card:nth-child(5) { animation-delay: 1.0s; }
+
+        .game-card:hover {
+            transform: translateY(-15px) scale(1.03);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        /* --- Visual Thumbnail Game (CSS Art) --- */
+        .game-thumbnail {
+            height: 180px;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
+            font-size: 5rem;
+            position: relative;
+            overflow: hidden;
         }
-        .container {
-            text-align: center;
-            background: #16213e;
-            padding: 3rem;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            border: 1px solid #0f3460;
+        
+        /* Tema Warna per Game */
+        .thumb-animal { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .thumb-racing { background: linear-gradient(135deg, #ec4899, #e11d48); }
+        .thumb-adventure { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .thumb-sports { background: linear-gradient(135deg, #64748b, #334155); }
+        .thumb-lifestyle { background: linear-gradient(135deg, #10b981, #059669); }
+
+        .game-info {
+            padding: 1.5rem;
         }
-        h1 {
-            color: #e94560;
-            margin-bottom: 5px;
-            font-size: 2.5rem;
-        }
-        p {
-            color: #95a5a6;
-            margin-bottom: 30px;
-        }
-        .game-list {
-            list-style: none;
-            padding: 0;
-        }
-        .game-item {
-            margin: 20px 0;
-        }
-        .game-link {
-            text-decoration: none;
-            color: #fff;
-            background: #0f3460;
-            padding: 15px 30px;
-            border-radius: 12px;
+
+        .theme-tag {
             display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--accent);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .game-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .game-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            min-height: 40px;
+        }
+
+        .play-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
             transition: all 0.3s ease;
-            min-width: 250px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            border: 1px solid transparent;
-        }
-        .game-link:hover {
-            background: #e94560;
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
-            border: 1px solid #fff;
-        }
-        .footer {
-            margin-top: 40px;
-            font-size: 0.85rem;
-            color: #4e5e7e;
+            text-transform: uppercase;
             letter-spacing: 1px;
         }
-        strong {
-            color: #e94560;
+
+        .play-btn:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+            letter-spacing: 3px;
+        }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: auto;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer strong {
+            color: #a855f7;
+        }
+
+        /* --- Keyframes Animations --- */
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleUp {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header h1 { font-size: 2.5rem; }
+            .container { padding: 1rem; }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>🎮 Game Hub</h1>
-        <p>Selamat datang! Pilih tantanganmu hari ini:</p>
-        
-        <ul class="game-list">
-            <li class="game-item">
-                <a href="https://game.alwanuzr.me/animal.html" class="game-link">🐾 Animal Dash Race</a>
-            </li>
-            <li class="game-item">
-                <a href="https://game.alwanuzr.me/magic-chess.html" class="game-link">♟️ Catur (Magic Chess)</a>
-            </li>
-        </ul>
+    <div class="bg-ornament ornament-1"></div>
+    <div class="bg-ornament ornament-2"></div>
 
-        <div class="footer">
-            CREDIT BY <strong>ALWANU ZAKY RAIHAN</strong>
+    <header>
+        <div class="profile-badge">
+            👤 ALWANU ZAKY RAIHAN | Kelas XI TJKT 3 | Absen 6
         </div>
+        <h1>Game Studio Hub</h1>
+        <p>Pilih dan mainkan koleksi game HTML5 interaktif. Tugas project game development dengan 5 tema berbeda.</p>
+    </header>
+
+    <div class="container">
+        <main class="game-grid">
+            
+            <article class="game-card">
+                <div class="game-thumbnail thumb-animal">🦊</div>
+                <div class="game-info">
+                    <span class="theme-tag">Theme: Animal</span>
+                    <h2 class="game-title">Animal Dash Race</h2>
+                    <p class="game-desc">Balapan seru karakter hewan dengan kecepatan tinggi!</p>
+                    <a href="https://game.alwanuzr.me/animal.html" class="play-btn">Play Now 🎮</a>
+                </div>
+            </article>
+
+            <article class="game-card">
+                <div class="game-thumbnail thumb-racing">🏎️</div>
+                <div class="game-info">
+                    <span class="theme-tag">Theme: Kendaraan</span>
+                    <h2 class="game-title">Neon Car Highway</h2>
+                    <p class="game-desc">Pacu mobil neonmu di jalan raya tanpa batas waktu.</p>
+                    <a href="https://game.alwanuzr.me/neon-race-car.html" class="play-btn">Play Now 🎮</a>
+                </div>
+            </article>
+
+            <article class="game-card">
+                <div class="game-thumbnail thumb-adventure">🍄</div>
+                <div class="game-info">
+                    <span class="theme-tag">Theme: Adventure</span>
+                    <h2 class="game-title">Pixel Adventure</h2>
+                    <p class="game-desc">Petualangan ala Super Mario Bros di dunia pixel retro.</p>
+                    <a href="https://game.alwanuzr.me/Pixel-Adventure.html" class="play-btn">Play Now 🎮</a>
+                </div>
+            </article>
+
+            <article class="game-card">
+                <div class="game-thumbnail thumb-sports">♟️</div>
+                <div class="game-info">
+                    <span class="theme-tag">Theme: Sports</span>
+                    <h2 class="game-title">Modern Chess</h2>
+                    <p class="game-desc">Adu strategi di papan catur modern yang elegan.</p>
+                    <a href="https://game.alwanuzr.me/modern-chess.html" class="play-btn">Play Now 🎮</a>
+                </div>
+            </article>
+
+            <article class="game-card">
+                <div class="game-thumbnail thumb-lifestyle">🎥</div>
+                <div class="game-info">
+                    <span class="theme-tag">Theme: Life Style</span>
+                    <h2 class="game-title">GoTube Simulator</h2>
+                    <p class="game-desc">Rasakan pengalaman menjadi streamer populer masa kini!</p>
+                    <a href="https://game.alwanuzr.me/streaming-simulator.html" class="play-btn">Play Now 🎮</a>
+                </div>
+            </article>
+
+        </main>
     </div>
+
+    <footer>
+        <p>Project Tugas Game Development &copy; 2026</p>
+        <p>Developed with 🤍 by <strong>Alwanu Zaky Raihan</strong></p>
+    </footer>
 
 </body>
 </html>
