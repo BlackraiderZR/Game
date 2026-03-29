@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoTube Streaming Simulator</title>
+    <style>
+        :root {
+            /* YouTube Studio Color Palette */
+            --primary: #FF0000;
+            --primary-hover: #CC0000;
+            --bg-body: #0F0F0F;
+            --bg-panel: #212121;
+            --bg-card: #282828;
+            --bg-hover: #3d3d3d;
+            --text-main: #FFFFFF;
+            --text-muted: #AAAAAA;
+            --border-color: #3f3f3f;
+            --saweria-green: #2ecc71;
+            --saweria-yellow: #f1c40f;
+            --mood-blue: #3498db;
+            --radius: 12px;
+            --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font);
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* YOUTUBE STYLE HEADER */
+        header.yt-header {
+            background-color: var(--bg-body);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+            height: 64px;
+        }
+
+        .logo { font-size: 20px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+        .logo-icon { background-color: var(--primary); color: white; padding: 2px 10px; border-radius: 6px; font-size: 16px; }
+        .studio-text { font-weight: 400; color: var(--text-muted); margin-left: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .btn-create { background-color: var(--bg-card); color: white; border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .btn-create:hover { background-color: var(--bg-hover); }
+        .profile-pic { width: 32px; height: 32px; background-color: var(--primary); border-radius: 50%; border: 2px solid #fff; }
+
+        /* APP LAYOUT */
+        .app-layout { display: flex; flex: 1; height: calc(100vh - 64px); }
+
+        /* SIDEBAR (STATS) */
+        aside.yt-sidebar {
+            width: 260px;
+            background-color: var(--bg-body);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .stat-group { padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+
+        .stat-card {
+            background-color: var(--bg-panel);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.1s, border-color 0.2s;
+        }
+        .stat-card.bump { transform: scale(1.05); border-color: var(--primary); }
+
+        .stat-title { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        .stat-value { font-size: 22px; font-weight: bold; }
+        
+        .val-sub { color: #FF0000; font-size: 26px !important; text-shadow: 0 0 10px rgba(255,0,0,0.3); }
+        .val-money { color: var(--saweria-green); }
+        .val-like { color: #ff4757; }
+        .val-viewer { color: #3498db; }
+
+        /* ENERGY & MOOD BAR */
+        .energy-container { width: 100%; height: 8px; background-color: #333; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+        .energy-bar { height: 100%; background-color: #f1c40f; width: 100%; transition: width 0.3s ease, background-color 0.3s ease; }
+        .mood-bar { height: 100%; background-color: var(--mood-blue); width: 100%; transition: width 0.3s ease, background-color 0.3s ease; }
+
+        /* MAIN CONTENT AREA */
+        main.yt-main {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: #121212;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* STREAM PREVIEW */
+        .stream-section { display: flex; justify-content: center; }
+        .stream-wrapper {
+            width: 100%; max-width: 800px; aspect-ratio: 16 / 9;
+            background-color: #000; border-radius: 16px; position: relative;
+            overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            border: 2px solid var(--border-color); transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .stream-wrapper.is-live { border-color: var(--primary); box-shadow: 0 0 20px rgba(255, 0, 0, 0.2); }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+        /* TIKTOK UI OVERLAYS */
+        .tiktok-top-overlay { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; align-items: center; gap: 10px; z-index: 20; }
+        .tt-host-info { background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); padding: 4px 12px 4px 4px; border-radius: 20px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.2s;}
+        .tt-host-info:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+        .tt-avatar { width: 28px; height: 28px; background: var(--primary); border-radius: 50%; border: 2px solid white; }
+        .tt-host-name { font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+        .edit-icon { background: rgba(0,0,0,0.5); border-radius: 50%; padding: 3px; font-size: 10px; }
+        .tt-live-badge { background: var(--primary); padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 900; animation: pulse 1.5s infinite; display: none; }
+        .tt-viewer-count { background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); padding: 4px 10px; border-radius: 10px; font-size: 13px; font-weight: bold; margin-left: auto; border: 1px solid rgba(255,255,255,0.1); display: none; }
+
+        /* VIRAL MOMENT BUTTON */
+        .viral-btn {
+            position: absolute; background: linear-gradient(45deg, #ff0000, #ff7300); color: white;
+            padding: 15px 25px; font-size: 18px; font-weight: 900; border-radius: 30px; border: 3px solid white;
+            cursor: pointer; z-index: 60; box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+            animation: viralShake 0.5s infinite, popIn 0.3s ease-out forwards; display: none; text-transform: uppercase;
+        }
+        .viral-btn:hover { transform: scale(1.1); background: linear-gradient(45deg, #ff7300, #ff0000); }
+
+        /* CHAT SYSTEM */
+        .chat-container {
+            position: absolute; bottom: 10px; left: 15px; width: 60%; height: 50%;
+            display: flex; flex-direction: column; justify-content: flex-end; gap: 6px;
+            pointer-events: none; overflow: hidden;
+            -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%);
+            mask-image: linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%); z-index: 20;
+        }
+        .chat-msg {
+            background-color: rgba(0, 0, 0, 0.3); padding: 6px 12px; border-radius: 12px;
+            font-size: 13.5px; color: white; width: fit-content; animation: slideUpFade 5s forwards;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.05);
+        }
+        .chat-user { font-weight: 800; margin-right: 5px; }
+
+        /* FLOATING HEARTS */
+        .floating-hearts-container { position: absolute; bottom: 20px; right: 20px; width: 60px; height: 70%; pointer-events: none; overflow: hidden; z-index: 50; }
+        .heart-icon { position: absolute; bottom: 0; font-size: 26px; opacity: 0; animation: floatHeart 2.5s ease-in forwards; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.5)); }
+
+        /* SAWERIA POPUP */
+        .donation-popup {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--bg-card), #1a1a1a); border: 2px solid var(--saweria-green);
+            padding: 20px 30px; border-radius: 16px; text-align: center; box-shadow: 0 10px 40px rgba(46, 204, 113, 0.4);
+            z-index: 100; opacity: 0; min-width: 300px; pointer-events: none;
+        }
+        .donation-popup.show { animation: popIn 5s forwards; }
+        .don-gif { font-size: 40px; margin-bottom: 10px; animation: bounce 1s infinite; }
+        .don-amount { color: var(--saweria-yellow); font-size: 28px; font-weight: 900; text-shadow: 0 2px 5px rgba(0,0,0,0.5); margin-bottom: 5px; }
+        .don-name { font-size: 18px; color: white; margin-bottom: 10px; }
+        .don-message { background-color: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; font-style: italic; color: #ddd; font-size: 15px; }
+
+        /* CONTROL DECK */
+        .control-section { background-color: var(--bg-panel); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-color); max-width: 800px; margin: 0 auto; width: 100%; }
+        .control-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .control-header h2 { font-size: 16px; color: var(--text-muted); }
+        
+        .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+        
+        button { padding: 12px; border: none; border-radius: 10px; font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; }
+        button:active { transform: scale(0.97); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+
+        .btn-stream { background-color: var(--primary); grid-column: span 2; font-size: 15px;}
+        .btn-stream:hover:not(:disabled) { background-color: var(--primary-hover); }
+        .btn-stop { background-color: #e74c3c; grid-column: span 2; display: none; font-size: 15px;}
+        .btn-action { background-color: #2b2b2b; border: 1px solid #444; }
+        .btn-action:hover:not(:disabled) { background-color: #3b3b3b; }
+        .btn-shop { background-color: #9b59b6; grid-column: 1 / -1; margin-top: 10px; font-size: 15px; border: 1px solid #8e44ad; }
+        .btn-shop:hover:not(:disabled) { background-color: #8e44ad; }
+
+        /* SHOP MODAL */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background-color: var(--bg-panel); width: 90%; max-width: 600px;
+            border-radius: 16px; border: 1px solid var(--border-color);
+            padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .modal-header h2 { color: white; }
+        .close-btn { background: none; border: none; font-size: 24px; color: #aaa; cursor: pointer; padding: 0; }
+        .close-btn:hover { color: white; }
+        
+        .shop-list { display: flex; flex-direction: column; gap: 15px; max-height: 60vh; overflow-y: auto; }
+        .shop-item { background-color: var(--bg-card); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+        .shop-info h4 { color: white; margin-bottom: 5px; font-size: 16px; }
+        .shop-info p { color: var(--text-muted); font-size: 12px; }
+        .btn-buy { background-color: var(--saweria-green); color: #000; font-weight: 900; padding: 10px 15px; }
+
+        /* TOAST NOTIFICATION */
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background-color: var(--primary); color: white; padding: 10px 20px; border-radius: 8px;
+            font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 2000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* KEYFRAMES */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        @keyframes slideUpFade { 0% { transform: translateY(20px); opacity: 0; } 5% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-20px); opacity: 0; } }
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 10% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } 15% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 85% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes floatHeart { 0% { transform: translateY(0) scale(0.5) translateX(0); opacity: 1; } 25% { transform: translateY(-50px) scale(1.2) translateX(-15px); opacity: 1; } 50% { transform: translateY(-100px) scale(1) translateX(10px); opacity: 0.8; } 100% { transform: translateY(-200px) scale(1.5) translateX(-20px); opacity: 0; } }
+        @keyframes viralShake { 0% { transform: rotate(-2deg); } 50% { transform: rotate(2deg) scale(1.05); } 100% { transform: rotate(-2deg); } }
+        @keyframes flashRed { 0%, 50%, 100% { background-color: var(--bg-body); } 25%, 75% { background-color: #500000; } }
+
+        @media (max-width: 900px) {
+            .app-layout { flex-direction: column; }
+            aside.yt-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); height: auto; }
+            .stat-group { flex-direction: row; flex-wrap: wrap; }
+            .stat-card { flex: 1 1 calc(50% - 12px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="toast">Notifikasi</div>
+
+    <header class="yt-header">
+        <div class="logo"><span class="logo-icon">▶</span> GoTube <span class="studio-text">Simulator</span></div>
+        <div class="header-right">
+            <button id="btn-header-live" class="btn-create">➕ GO LIVE</button>
+            <div class="profile-pic"></div>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        <aside class="yt-sidebar">
+            <div class="stat-group">
+                <div class="stat-card" id="card-sub" style="background: linear-gradient(145deg, #2a0808, #1a0505); border: 1px solid #ff0000;">
+                    <div class="stat-title" style="color:#ff6b6b">▶ Subscribers</div>
+                    <div class="stat-value val-sub" id="val-sub">0</div>
+                </div>
+
+                <div class="stat-card" id="card-viewer">
+                    <div class="stat-title">👁 Viewers Live</div>
+                    <div class="stat-value val-viewer" id="val-viewer">0</div>
+                </div>
+                
+                <div class="stat-card" id="card-like">
+                    <div class="stat-title">❤️ Likes</div>
+                    <div class="stat-value val-like" id="val-like">0</div>
+                </div>
+
+                <div class="stat-card" id="card-money">
+                    <div class="stat-title">💰 Saldo Uang</div>
+                    <div class="stat-value val-money" id="val-money">Rp 0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-title">⚡ Stamina</div>
+                    <div class="stat-value" id="val-energy" style="font-size: 18px;">100%</div>
+                    <div class="energy-container"><div id="energy-bar" class="energy-bar"></div></div>
+                </div>
+
+                <!-- MOOD BAR BARU -->
+                <div class="stat-card" id="card-mood">
+                    <div class="stat-title">🎭 Mood / Mental</div>
+                    <div class="stat-value" id="val-mood" style="font-size: 18px;">100%</div>
+                    <div class="energy-container"><div id="mood-bar" class="mood-bar"></div></div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="yt-main">
+            <div class="stream-section">
+                <div id="stream-wrapper" class="stream-wrapper">
+                    <div id="camera-msg" class="camera-off-msg">Meminta akses Webcam...</div>
+                    <video id="webcam" autoplay playsinline muted></video>
+                    
+                    <div class="tiktok-top-overlay">
+                        <!-- Hit area diperbesar, dan ada icon Edit jelas -->
+                        <div class="tt-host-info" id="host-info-btn" title="Klik untuk ubah nama channel">
+                            <div class="tt-avatar"></div>
+                            <div id="host-name" class="tt-host-name">Channel Kamu <span class="edit-icon">✏️</span></div>
+                        </div>
+                        <div id="live-badge" class="tt-live-badge">LIVE</div>
+                        <div id="tt-viewer-count" class="tt-viewer-count">👁 <span id="tt-val-viewer">0</span></div>
+                    </div>
+                    
+                    <button id="viral-btn" class="viral-btn">🔥 MOMEN VIRAL! KLIK! 🔥</button>
+
+                    <div id="chat-container" class="chat-container"></div>
+                    <div id="hearts-container" class="floating-hearts-container"></div>
+
+                    <div id="donation-popup" class="donation-popup">
+                        <div class="don-gif">🎉💸</div>
+                        <div id="don-amount" class="don-amount">Rp 0</div>
+                        <div id="don-name" class="don-name">Dari Anonim</div>
+                        <div id="don-message" class="don-message"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="control-header">
+                    <h2>🎮 Control Deck</h2>
+                </div>
+                <div class="control-grid">
+                    <button id="btn-start" class="btn-stream">▶ MULAI STREAM</button>
+                    <button id="btn-stop" class="btn-stop">⏹ HENTIKAN STREAM</button>
+                    
+                    <button id="btn-rest" class="btn-action">🛏️ Tidur (Gratis) <br>+20⚡ | +20🎭</button>
+                    <button id="btn-coffee" class="btn-action">☕ Kopi (Rp 10k) <br>+40⚡ | +10🎭</button>
+                    <button id="btn-pizza" class="btn-action">🍕 Pizza (Rp 30k) <br>MAX⚡ | +50🎭</button>
+                    
+                    <button id="btn-shop" class="btn-shop">🛒 BUKA TOKO SETUP</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SHOP MODAL -->
+    <div id="shop-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🛒 Toko Setup</h2>
+                <button id="btn-close-shop" class="close-btn">✖</button>
+            </div>
+            <div class="shop-list" id="shop-list">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- BURNOUT MODAL (EFEK JERA) -->
+    <div id="burnout-modal" class="modal-overlay">
+        <div class="modal-content" style="border-color: #e74c3c; text-align: center; max-width: 400px;">
+            <h2 style="color: #e74c3c; font-size: 28px; margin-bottom: 10px;">🚨 BURNOUT! 🚨</h2>
+            <p style="margin: 15px 0; font-size: 16px;">Kamu pingsan saat live stream karena kelelahan mental dan fisik yang ekstrem!</p>
+            <div style="background: #1a0505; padding: 15px; border-radius: 8px; border: 1px solid #ff0000; margin: 20px 0;">
+                <h3 style="color: var(--text-main); font-size: 14px; margin-bottom: 10px;">Surat Tagihan Rumah Sakit</h3>
+                <p style="font-size: 28px; color: #e74c3c; font-weight: bold;">- Rp 100.000</p>
+            </div>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 25px;">Ini peringatan! Jangan abaikan indikator Stamina dan Mood kamu saat sedang streaming. Jika uangmu tidak cukup, saldo akan minus (hutang).</p>
+            <button id="btn-close-burnout" class="btn-stream" style="width: 100%; justify-content: center;">SAYA KAPOK & BAYAR</button>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME STATE ---
+        let state = {
+            isStreaming: false,
+            channelName: "Channel Kamu",
+            viewers: 0,
+            likes: 0,
+            money: 0,
+            energy: 100,
+            mood: 100, // Variabel Mood Baru
+            subscribers: 0,
+            gear: {
+                kamera: 1, 
+                pc: 1,     
+                internet: 1 
+            }
+        };
+
+        // --- SHOP DATA (DIREBALANCE UNTUK STAMINA LEBIH LAMBAT) ---
+        const shopData = {
+            kamera: [
+                { lvl: 1, name: "Webcam Laptop", cost: 0, desc: "Viewer x1", mult: 1 },
+                { lvl: 2, name: "Webcam HD 1080p", cost: 50000, desc: "Viewer x2", mult: 2 },
+                { lvl: 3, name: "Mirrorless Camera", cost: 250000, desc: "Viewer x5", mult: 5 },
+                { lvl: 4, name: "Studio 4K Setup", cost: 1000000, desc: "Viewer x15", mult: 15 }
+            ],
+            pc: [
+                // Drain stamina diperlambat drastis (awalnya 1.0 sekarang 0.4 untuk lvl 1)
+                { lvl: 1, name: "PC Kentang", cost: 0, desc: "Energi -0.4/detik", drain: 0.4 },
+                { lvl: 2, name: "PC Rakitan Mid", cost: 75000, desc: "Energi -0.25/detik", drain: 0.25 },
+                { lvl: 3, name: "PC Gaming Pro", cost: 300000, desc: "Energi -0.15/detik", drain: 0.15 },
+                { lvl: 4, name: "Dual PC Streaming", cost: 1500000, desc: "Energi -0.05/detik", drain: 0.05 }
+            ],
+            internet: [
+                { lvl: 1, name: "Wifi Tetangga", cost: 0, desc: "Donasi Normal", donasiMult: 1 },
+                { lvl: 2, name: "Kabel LAN 50Mbps", cost: 40000, desc: "Donasi x1.5", donasiMult: 1.5 },
+                { lvl: 3, name: "Fiber 100Mbps", cost: 200000, desc: "Donasi x3", donasiMult: 3 },
+                { lvl: 4, name: "Internet Sultan 1Gbps", cost: 800000, desc: "Donasi x8", donasiMult: 8 }
+            ]
+        };
+
+        // Kategori Chat untuk Mempengaruhi Mood
+        const chatDatabase = {
+            positive: ["GG parah", "gas terus bro🔥", "anjay keren", "wah gila sih ini", "suhuku", "Menyala abangku 🔥", "seru banget sumpah", "suaranya mantap", "pro player nih", "love u bang"],
+            neutral: ["wkwkwk ngakak", "first viewer 😎", "info mabar", "bang tutor", "makan dulu bang", "wih hd", "fokus bang", "P", "hadir", "lagi nonton sambil makan"],
+            negative: ["kok sepi bang 😭", "kamera burik", "ngebosenin amat", "skill issue", "cupu mainnya", "mending turu", "skip lah", "garing bang", "kapan selesainya ni live"]
+        };
+
+        const chatUserColors = ["#f1c40f", "#e74c3c", "#3498db", "#2ecc71", "#9b59b6", "#1abc9c", "#e67e22"];
+        const donatorNames = ["Danu", "Rizky", "Andi", "Budi", "Fajar", "Siti", "Ayu", "Reza", "Kevin"];
+        
+        let mainLoopId = null, chatLoopId = null, donationLoopId = null, viralTimeoutId = null;
+        let viralActive = false;
+
+        const el = {
+            video: document.getElementById('webcam'),
+            camMsg: document.getElementById('camera-msg'),
+            liveBadge: document.getElementById('live-badge'),
+            streamWrapper: document.getElementById('stream-wrapper'),
+            chatContainer: document.getElementById('chat-container'),
+            heartsContainer: document.getElementById('hearts-container'),
+            ttViewerCount: document.getElementById('tt-viewer-count'),
+            ttValViewer: document.getElementById('tt-val-viewer'),
+            hostInfoBtn: document.getElementById('host-info-btn'), // Area klik nama channel
+            hostName: document.getElementById('host-name'),
+            viralBtn: document.getElementById('viral-btn'),
+            donPopup: document.getElementById('donation-popup'),
+            donAmount: document.getElementById('don-amount'),
+            donName: document.getElementById('don-name'),
+            donMsg: document.getElementById('don-message'),
+            valSub: document.getElementById('val-sub'),
+            valViewer: document.getElementById('val-viewer'),
+            valLike: document.getElementById('val-like'),
+            valMoney: document.getElementById('val-money'),
+            valEnergy: document.getElementById('val-energy'),
+            energyBar: document.getElementById('energy-bar'),
+            valMood: document.getElementById('val-mood'), // Mood Element
+            moodBar: document.getElementById('mood-bar'), // Mood Element
+            btnHeaderLive: document.getElementById('btn-header-live'),
+            btnStart: document.getElementById('btn-start'),
+            btnStop: document.getElementById('btn-stop'),
+            btnRest: document.getElementById('btn-rest'),
+            btnCoffee: document.getElementById('btn-coffee'),
+            btnPizza: document.getElementById('btn-pizza'),
+            btnShop: document.getElementById('btn-shop'),
+            shopModal: document.getElementById('shop-modal'),
+            shopList: document.getElementById('shop-list'),
+            btnCloseShop: document.getElementById('btn-close-shop'),
+            burnoutModal: document.getElementById('burnout-modal'),
+            btnCloseBurnout: document.getElementById('btn-close-burnout'),
+            toast: document.getElementById('toast'),
+            cardSub: document.getElementById('card-sub'),
+            cardLike: document.getElementById('card-like'),
+            cardMoney: document.getElementById('card-money'),
+            cardMood: document.getElementById('card-mood')
+        };
+
+        const formatRp = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+        const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+        const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+        function showToast(msg, isError = false) {
+            el.toast.textContent = msg;
+            el.toast.style.backgroundColor = isError ? "#e74c3c" : "#2ecc71";
+            el.toast.classList.add('show');
+            setTimeout(() => el.toast.classList.remove('show'), 3000);
+        }
+
+        function bumpElement(element) {
+            element.classList.remove('bump');
+            void element.offsetWidth; 
+            element.classList.add('bump');
+            setTimeout(() => element.classList.remove('bump'), 150);
+        }
+
+        async function initWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                el.video.srcObject = stream;
+                el.camMsg.style.display = 'none';
+            } catch (err) {
+                el.camMsg.innerHTML = "⚠️ Gagal mengakses Webcam.<br><small>Izinkan akses kamera di browser Anda.</small>";
+            }
+        }
+
+        // --- UPDATE UI ---
+        function updateUI() {
+            el.valSub.innerText = state.subscribers.toLocaleString('id-ID');
+            el.valViewer.innerText = state.viewers.toLocaleString('id-ID');
+            el.ttValViewer.innerText = state.viewers.toLocaleString('id-ID');
+            el.valLike.innerText = state.likes.toLocaleString('id-ID');
+            el.valMoney.innerText = formatRp(state.money);
+            
+            // Render Stamina
+            state.energy = Math.max(0, Math.min(100, state.energy));
+            el.valEnergy.innerText = Math.floor(state.energy) + "%";
+            el.energyBar.style.width = state.energy + "%";
+            el.energyBar.style.backgroundColor = state.energy > 50 ? "#2ecc71" : (state.energy > 20 ? "#f1c40f" : "#e74c3c");
+
+            // Render Mood
+            state.mood = Math.max(0, Math.min(100, state.mood));
+            el.valMood.innerText = Math.floor(state.mood) + "%";
+            el.moodBar.style.width = state.mood + "%";
+            el.moodBar.style.backgroundColor = state.mood > 50 ? "#3498db" : (state.mood > 20 ? "#f39c12" : "#c0392b");
+
+            // Tampilkan Nama Channel Custom
+            el.hostName.innerHTML = `${state.channelName} <span class="edit-icon">✏️</span>`;
+
+            // Tombol kondisi
+            if (state.isStreaming) {
+                [el.btnRest, el.btnCoffee, el.btnPizza, el.btnShop].forEach(b => b.disabled = true);
+            } else {
+                el.btnRest.disabled = (state.energy >= 100 && state.mood >= 100);
+                el.btnCoffee.disabled = (state.energy >= 100 && state.mood >= 100) || state.money < 10000;
+                el.btnPizza.disabled = (state.energy >= 100 && state.mood >= 100) || state.money < 30000;
+                el.btnShop.disabled = false;
+            }
+            
+            renderShop();
+        }
+
+        // --- CORE LOGIC (TICK) ---
+        function mainTick() {
+            if (!state.isStreaming) return; 
+
+            // 1. Stamina Drain
+            const drainRate = shopData.pc[state.gear.pc - 1].drain;
+            state.energy -= drainRate; 
+            
+            // 2. Viewers Growth
+            const camMult = shopData.kamera[state.gear.kamera - 1].mult;
+            const growth = randomInt(-5, 15) * camMult;
+            state.viewers = Math.max(1, state.viewers + growth);
+
+            // 3. Subscriber Growth
+            if (Math.random() > 0.6 && state.viewers > 10) {
+                const newSubs = randomInt(1, Math.ceil(state.viewers * 0.05));
+                state.subscribers += newSubs;
+                bumpElement(el.cardSub);
+            }
+
+            // 4. Likes Logic (Menaikkan Mood)
+            if (Math.random() > 0.4) {
+                const newLikes = randomInt(1, Math.ceil(state.viewers / 5) + 1);
+                state.likes += newLikes;
+                state.mood += (0.1 * newLikes); // Tiap like menaikkan mood sedikit
+                bumpElement(el.cardLike);
+                for(let i=0; i<Math.min(3, newLikes); i++) setTimeout(spawnHeart, i*150);
+            }
+
+            // 5. MOOD SYSTEM LOGIC
+            if (state.viewers < 10) {
+                state.mood -= 0.3; // Sepi = Bad Mood
+            } else if (state.viewers > 50) {
+                state.mood += 0.2; // Ramai = Happy
+            }
+
+            // Sinkronisasi Stamina vs Mood
+            if (state.energy < 30) {
+                state.mood -= 0.5; // Agak lelah = Mood pelan turun
+            }
+            if (state.energy < 10) {
+                state.mood -= 1.5; // Sangat lelah = Mood terjun bebas
+            }
+
+            // Cek Jika Burnout (Energy ATAU Mood Habis)
+            if (state.mood <= 0 || state.energy <= 0) {
+                triggerBurnout();
+                return;
+            }
+
+            // 6. Viral Moment Trigger
+            if (!viralActive && Math.random() < 0.05 && state.viewers > 20) {
+                triggerViralMoment();
+            }
+
+            updateUI();
+        }
+
+        // --- VIRAL MOMENT ---
+        function triggerViralMoment() {
+            viralActive = true;
+            el.viralBtn.style.display = "block";
+            el.viralBtn.style.top = randomInt(10, 70) + "%";
+            el.viralBtn.style.left = randomInt(10, 60) + "%";
+
+            viralTimeoutId = setTimeout(() => {
+                if (viralActive) {
+                    el.viralBtn.style.display = "none";
+                    viralActive = false;
+                }
+            }, 3000);
+        }
+
+        el.viralBtn.addEventListener('click', () => {
+            if (!viralActive) return;
+            viralActive = false;
+            el.viralBtn.style.display = "none";
+            clearTimeout(viralTimeoutId);
+
+            const bonusSubs = Math.floor(state.viewers * 0.5);
+            state.subscribers += bonusSubs;
+            state.viewers *= 3; 
+            state.mood += 20; // Viral bikin hepi
+            
+            showToast(`🔥 MOMEN VIRAL! +${bonusSubs} Subs! Viewer Meledak!`, false);
+            spawnChat("WOOOW MASUK FYP 🔥🔥🔥", "positive", "#f1c40f");
+            for(let i=0; i<15; i++) setTimeout(spawnHeart, i*100);
+            updateUI();
+            bumpElement(el.cardSub);
+            bumpElement(el.cardMood);
+        });
+
+        // --- EVENTS & ACTIONS ---
+        function triggerDonation() {
+            const netMult = shopData.internet[state.gear.internet - 1].donasiMult;
+            const amount = randomItem([5000, 10000, 20000, 50000]) * netMult;
+            
+            state.money += amount;
+            state.mood += 5; // Duit masuk = Mood langsung naik
+            updateUI();
+            bumpElement(el.cardMoney);
+            bumpElement(el.cardMood);
+
+            el.donAmount.innerText = formatRp(amount);
+            el.donName.innerText = `Dari ${randomItem(donatorNames)}`;
+            el.donPopup.classList.remove('show');
+            void el.donPopup.offsetWidth; 
+            el.donPopup.classList.add('show');
+            spawnChat(`💰 Donasi Rp${amount.toLocaleString('id-ID')} masuk!`, "positive", "#2ecc71");
+        }
+
+        function spawnChat(customMsg = null, forceCategory = null, customColor = null) {
+            const chatDiv = document.createElement('div');
+            chatDiv.className = 'chat-msg';
+            const username = randomItem(donatorNames) + randomInt(1, 99);
+            const color = customColor || randomItem(chatUserColors);
+            
+            // Tentukan kategori chat jika tidak ada custom message
+            let chatText = customMsg;
+            if (!chatText) {
+                let category = forceCategory;
+                if (!category) {
+                    const r = Math.random();
+                    if (r < 0.15) category = 'negative'; // 15% komentar buruk
+                    else if (r < 0.5) category = 'positive'; // 35% komentar baik
+                    else category = 'neutral'; // 50% komentar biasa
+                }
+                
+                chatText = randomItem(chatDatabase[category]);
+
+                // Pengaruh komentar ke mood
+                if (state.isStreaming) {
+                    if (category === 'negative') state.mood -= 2;
+                    else if (category === 'positive') state.mood += 1;
+                }
+            }
+
+            chatDiv.innerHTML = `<span class="chat-user" style="color:${color}">${username}</span> ${chatText}`;
+            el.chatContainer.appendChild(chatDiv);
+            if (el.chatContainer.childNodes.length > 15) el.chatContainer.removeChild(el.chatContainer.firstChild);
+            setTimeout(() => { if(chatDiv.parentNode) chatDiv.remove(); }, 5000);
+        }
+
+        function triggerBurnout() {
+            // Hentikan paksa stream
+            state.isStreaming = false;
+            viralActive = false;
+            el.viralBtn.style.display = "none";
+            clearInterval(mainLoopId); clearTimeout(chatLoopId); clearInterval(donationLoopId); clearTimeout(viralTimeoutId);
+            
+            state.viewers = 0;
+            el.btnStart.style.display = 'flex'; el.btnStop.style.display = 'none';
+            el.liveBadge.style.display = 'none'; el.ttViewerCount.style.display = 'none';
+            el.streamWrapper.classList.remove('is-live');
+            el.donPopup.classList.remove('show');
+            
+            spawnChat("🚑 STREAM TERPUTUS KARENA HOST PINGSAN 🚑", "negative", "#ff4757");
+            
+            // Efek Jera: Uang berkurang 100k (bisa hutang), reset energi & mood ke standar menengah
+            state.money -= 100000;
+            state.energy = 20;
+            state.mood = 50;
+            
+            updateUI();
+            bumpElement(el.cardMoney);
+            bumpElement(el.cardMood);
+            bumpElement(el.energyBar);
+            
+            // Animasi layar merah & Munculkan Tagihan RS
+            document.body.style.animation = "flashRed 0.8s ease-in-out";
+            setTimeout(() => { document.body.style.animation = ""; }, 800);
+            
+            el.burnoutModal.style.display = "flex";
+        }
+
+        function spawnHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'heart-icon';
+            heart.innerText = randomItem(['❤️', '🔥', '✨']);
+            heart.style.left = randomInt(0, 40) + 'px';
+            heart.style.animationDuration = randomInt(2000, 3000) + 'ms';
+            el.heartsContainer.appendChild(heart);
+            setTimeout(() => { if(heart.parentNode) heart.remove(); }, 3000);
+        }
+
+        function startStream() {
+            if (state.isStreaming) return; 
+            if (state.energy < 10) return showToast("Stamina Habis! Makan/Tidur dulu.", true);
+            if (state.mood < 10) return showToast("Mood/Mental hancur! Tidur atau makan enak dulu.", true);
+            
+            state.isStreaming = true;
+            state.viewers = Math.max(1, Math.floor(state.subscribers * 0.15)); 
+            
+            el.btnStart.style.display = 'none';
+            el.btnStop.style.display = 'flex';
+            el.liveBadge.style.display = 'block';
+            el.ttViewerCount.style.display = 'block';
+            el.streamWrapper.classList.add('is-live');
+            
+            updateUI();
+            showToast("Stream Dimulai! 🔴");
+
+            mainLoopId = setInterval(mainTick, 1000);
+            
+            const runChat = () => {
+                if (!state.isStreaming) return;
+                spawnChat();
+                chatLoopId = setTimeout(runChat, Math.max(300, 2500 - (state.viewers * 2)));
+            };
+            runChat();
+
+            donationLoopId = setInterval(() => {
+                if (state.viewers > 10 && Math.random() < 0.25) triggerDonation();
+            }, 4000);
+        }
+
+        function stopStream() {
+            state.isStreaming = false;
+            viralActive = false;
+            el.viralBtn.style.display = "none";
+            clearInterval(mainLoopId); clearTimeout(chatLoopId); clearInterval(donationLoopId); clearTimeout(viralTimeoutId);
+            
+            state.viewers = 0;
+            el.btnStart.style.display = 'flex'; el.btnStop.style.display = 'none';
+            el.liveBadge.style.display = 'none'; el.ttViewerCount.style.display = 'none';
+            el.streamWrapper.classList.remove('is-live');
+            el.donPopup.classList.remove('show');
+            
+            spawnChat("🔴 STREAM OFFLINE", "neutral", "#ff4757");
+            updateUI();
+        }
+
+        function ubahNamaChannel() {
+            const newName = prompt("Masukkan nama channel GoTube Anda (maks 20 karakter):", state.channelName);
+            if (newName && newName.trim() !== "") {
+                state.channelName = newName.substring(0, 20); 
+                localStorage.setItem("gotube_channel", state.channelName); // Simpan permanen
+                updateUI();
+                showToast("✅ Nama channel berhasil disimpan!");
+            }
+        }
+
+        // --- ECONOMY & RECOVERY ---
+        // Makan dan tidur sekarang mengisi Stamina DAN Mood!
+        el.btnRest.addEventListener('click', () => { state.energy += 20; state.mood += 20; updateUI(); showToast("🛏️ Tidur sebentar (+20⚡ | +20🎭)"); });
+        el.btnCoffee.addEventListener('click', () => { if(state.money >= 10000) { state.money -= 10000; state.energy += 40; state.mood += 10; updateUI(); showToast("☕ Ngopi seger! (+40⚡ | +10🎭)"); }});
+        el.btnPizza.addEventListener('click', () => { if(state.money >= 30000) { state.money -= 30000; state.energy = 100; state.mood += 50; updateUI(); showToast("🍕 Makan pizza lezat! (MAX⚡ | +50🎭)"); }});
+
+        el.btnShop.addEventListener('click', () => { el.shopModal.style.display = "flex"; renderShop(); });
+        el.btnCloseShop.addEventListener('click', () => { el.shopModal.style.display = "none"; });
+        
+        el.btnCloseBurnout.addEventListener('click', () => {
+            el.burnoutModal.style.display = "none";
+            showToast("Duit melayang buat bayar Rumah Sakit 💸", true);
+        });
+        
+        // Listeners
+        el.btnStart.addEventListener('click', startStream);
+        el.btnHeaderLive.addEventListener('click', startStream); 
+        el.btnStop.addEventListener('click', stopStream);
+        el.hostInfoBtn.addEventListener('click', ubahNamaChannel); // Hit area besar untuk ganti nama
+
+        function buyGear(type) {
+            const currentLvl = state.gear[type];
+            const nextGear = shopData[type][currentLvl];
+            if (nextGear && state.money >= nextGear.cost) {
+                state.money -= nextGear.cost;
+                state.gear[type]++;
+                updateUI();
+                showToast(`✅ Berhasil membeli ${nextGear.name}!`);
+            } else {
+                showToast("❌ Uang tidak cukup!", true);
+            }
+        }
+
+        function renderShop() {
+            el.shopList.innerHTML = "";
+            const categories = [
+                { id: 'kamera', title: '📷 Kamera (Naikin Viewer)' },
+                { id: 'pc', title: '🖥️ PC Setup (Hemat Stamina)' },
+                { id: 'internet', title: '🌐 Internet (Naikin Donasi)' }
+            ];
+
+            categories.forEach(cat => {
+                const currentLvl = state.gear[cat.id];
+                const nextGear = shopData[cat.id][currentLvl]; 
+                
+                let html = `<div class="shop-item">
+                    <div class="shop-info">
+                        <h4 style="color:#f39c12">${cat.title}</h4>
+                        <h4>Lvl ${currentLvl}: ${shopData[cat.id][currentLvl-1].name}</h4>
+                        <p>Sekarang: ${shopData[cat.id][currentLvl-1].desc}</p>
+                    </div>`;
+
+                if (nextGear) {
+                    const canAfford = state.money >= nextGear.cost;
+                    html += `
+                        <div style="text-align:right;">
+                            <p style="color:var(--saweria-green); margin-bottom:5px; font-weight:bold;">Rp ${nextGear.cost.toLocaleString('id-ID')}</p>
+                            <button class="btn-buy" ${canAfford ? '' : 'disabled'} onclick="buyGear('${cat.id}')">Upgrade Lvl ${currentLvl+1}</button>
+                        </div>
+                    </div>`;
+                } else {
+                    html += `<div><button class="btn-buy" disabled style="background:#555; color:white;">MAX LEVEL</button></div></div>`;
+                }
+                el.shopList.innerHTML += html;
+            });
+        }
+
+        window.onload = () => { 
+            initWebcam(); 
+            // Cek nama channel dari Local Storage
+            const savedName = localStorage.getItem("gotube_channel");
+            if (savedName) {
+                state.channelName = savedName;
+            } else {
+                // Jika tidak ada nama, tanyakan saat pertama buka
+                setTimeout(ubahNamaChannel, 1000);
+            }
+            updateUI(); 
+        };
+    </script>
+</body>
+</html>
