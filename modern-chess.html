@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewpoviewpoviewpoviewportrtrtrt" content="width=device-width, initial-scale=1.0">
+    <title>Modern Canvas Chess</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1d;
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --text-color: #ffffff;
+            --highlight-selected: rgba(246, 246, 105, 0.6);
+            --highlight-move: rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        #hud {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 15px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+            gap: 10px;
+        }
+
+        #hud.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .player-info {
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+        }
+
+        .turn-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: transparent;
+            border: 2px solid white;
+            transition: background-color 0.3s;
+        }
+
+        .turn-indicator.white-turn {
+            background-color: white;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .turn-indicator.black-turn {
+            background-color: #333;
+            border-color: #777;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .timer-box {
+            background: #2c2c2e;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            border: 1px solid #444;
+        }
+
+        .ur-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        canvas {
+            background-color: #333;
+            border-radius: 8px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 29, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            z-index: 10;
+            transition: opacity 0.4s ease;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-shadow: 2px 4px 10px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        p.subtitle {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s, background-color 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button:disabled {
+            background-color: #555;
+            color: #888;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .promo-btn {
+            padding: 10px 20px;
+            font-size: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            background-color: #2c2c2e;
+            border: 2px solid #555;
+            color: white;
+            min-width: 100px;
+            transition: all 0.2s ease;
+        }
+
+        .promo-btn:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-hover);
+            transform: scale(1.05);
+        }
+
+        .hud-btn {
+            padding: 8px 16px;
+            font-size: 1rem;
+            background-color: #555;
+        }
+
+        .hud-btn:hover:not(:disabled) {
+            background-color: #666;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 18px;
+            font-size: 1.2rem;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+
+        .setting-item select {
+            padding: 6px;
+            font-size: 1rem;
+            border-radius: 4px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+
+        /* Toggle Switch Custom */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        #game-over-title {
+            color: #ff4757;
+            font-size: 2.5rem;
+        }
+
+        .skak-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            background: rgba(255, 50, 50, 0.95);
+            color: white;
+            padding: 15px 40px;
+            font-size: 3rem;
+            font-weight: bold;
+            border-radius: 12px;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 50;
+            opacity: 1;
+            transition: all 0.5s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .skak-popup.fade-out {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+
+        .hidden-el {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <!-- HUD -->
+    <div id="hud">
+        <div class="player-info">
+            <div id="turn-dot" class="turn-indicator white-turn"></div>
+            <span id="turn-text">Giliran: Putih</span>
+        </div>
+        
+        <div id="ur-container" class="ur-group hidden-el">
+            <button id="undo-btn" class="hud-btn" disabled title="Undo (Kembali)" style="font-size: 1.3rem; font-weight: bold; line-height: 1;">↺</button>
+            <button id="redo-btn" class="hud-btn" disabled title="Redo (Maju)" style="font-size: 1.3rem; font-weight: bold; line-height: 1;">↻</button>
+        </div>
+
+        <div id="timer-container" class="timer-box hidden-el">
+            ⏱ <span id="timer-w" style="color: #fff; font-weight:bold;">10:00</span> | <span id="timer-b" style="color: #aaa;">10:00</span>
+        </div>
+
+        <button id="reset-btn" class="hud-btn">Mulai Ulang</button>
+    </div>
+
+    <div style="position: relative; display: flex; justify-content: center;">
+        <canvas id="chessCanvas" width="600" height="600"></canvas>
+        
+        <!-- Skak Popup -->
+        <div id="skak-popup" class="skak-popup hidden-el">SKAK!</div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="overlay">
+            <h1>MODERN CHESS</h1>
+            <p class="subtitle">Pilih Mode Permainan</p>
+            <div style="display: flex; gap: 15px; flex-direction: column;">
+                <button id="play-pve-btn">VS AI ( comp )</button>
+                <button id="play-pvp-btn">MultiPemain</button>
+                <button id="open-settings-btn" style="background-color: #555;">⚙ Pengaturan</button>
+            </div>
+            <p style="margin-top: 40px; font-size: 0.85rem; color: #aaa; letter-spacing: 1px;">Credit By Alwanu Zaky Raihan</p>
+        </div>
+
+        <!-- Settings Menu -->
+        <div id="settings-menu" class="overlay hidden" style="background: rgba(26, 26, 29, 0.98);">
+            <h2>Pengaturan Game</h2>
+            <p class="subtitle">Sesuaikan preferensi Anda</p>
+            
+            <div class="setting-item">
+                <label>Tema Papan</label>
+                <select id="theme-select">
+                    <option value="green">Hijau Putih</option>
+                    <option value="blue">Biru Putih</option>
+                    <option value="black">Hitam Putih</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <label>Timer (10 Menit)</label>
+                <label class="switch">
+                    <input type="checkbox" id="timer-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <label>Undo / Redo</label>
+                <label class="switch">
+                    <input type="checkbox" id="ur-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <button id="close-settings-btn" style="margin-top: 20px;">Simpan & Kembali</button>
+        </div>
+
+        <!-- Promotion Menu -->
+        <div id="promotion-menu" class="overlay hidden" style="background: rgba(26, 26, 29, 0.95);">
+            <h2 style="margin-bottom: 10px; font-size: 2rem;">Promosi Pion</h2>
+            <p class="subtitle" style="margin-bottom: 30px;">Pilih bidak pengganti:</p>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 450px;">
+                <button class="promo-btn" data-piece="q"><span style="font-size: 2.5rem;">♛</span>Ratu</button>
+                <button class="promo-btn" data-piece="r"><span style="font-size: 2.5rem;">♜</span>Benteng</button>
+                <button class="promo-btn" data-piece="b"><span style="font-size: 2.5rem;">♝</span>Gajah</button>
+                <button class="promo-btn" data-piece="n"><span style="font-size: 2.5rem;">♞</span>Kuda</button>
+            </div>
+        </div>
+
+        <!-- Game Over Menu -->
+        <div id="game-over-menu" class="overlay hidden">
+            <h1 id="game-over-title">Checkmate!</h1>
+            <p id="game-over-subtitle" class="subtitle">Putih Menang</p>
+            <button id="restart-btn">Main Lagi</button>
+        </div>
+
+        <!-- Modal Konfirmasi Reset -->
+        <div id="reset-confirm-menu" class="overlay hidden" style="background: rgba(26, 26, 29, 0.95);">
+            <h2 style="margin-bottom: 10px; font-size: 2rem;">Mulai Ulang Game?</h2>
+            <p class="subtitle" style="margin-bottom: 30px;">Progres permainan saat ini akan hilang.</p>
+            <div style="display: flex; gap: 15px;">
+                <button id="confirm-reset-btn" style="background-color: #ff4757;">Ya, Reset</button>
+                <button id="cancel-reset-btn" style="background-color: #555;">Batal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * MODERN CANVAS CHESS
+     * Features: Settings (Timer, Undo/Redo, Theme), PVP/PVE, Path 2D realistic pieces.
+     */
+
+    // --- GAME CONSTANTS & STATE ---
+    const canvas = document.getElementById('chessCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const ROWS = 8;
+    const COLS = 8;
+    let SQUARE_SIZE = canvas.width / COLS;
+
+    // Warna Papan dan Pengaturan
+    const THEMES = {
+        'green': { light: '#EBECD0', dark: '#739552' },
+        'blue': { light: '#E8EDF9', dark: '#7B9ABE' },
+        'black': { light: '#F0F0F0', dark: '#666666' }
+    };
+    
+    let colorLight = THEMES['green'].light;
+    let colorDark = THEMES['green'].dark;
+
+    let appSettings = {
+        theme: 'green',
+        timer: false,
+        undoRedo: false
+    };
+
+    const INITIAL_BOARD = [
+        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+        [null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    ];
+
+    let board = [];
+    let turn = 'white'; 
+    let state = 'menu'; // 'menu', 'playing', 'animating', 'gameover', 'promoting'
+    let gameMode = 'pve'; 
+    
+    let selectedSquare = null; 
+    let validMovesForSelected = []; 
+    let promoSquare = null; 
+    
+    let animation = null; 
+
+    // Fitur Draw, Rokade & History
+    let castling = { wK: true, wQ: true, bK: true, bQ: true };
+    let halfMoveClock = 0;
+    let positionHistory = {};
+
+    // Fitur Undo / Redo
+    let historyStack = [];
+    let historyIndex = -1;
+
+    // Fitur Timer
+    let timerInterval = null;
+    let timeW = 600; // 10 menit
+    let timeB = 600;
+
+    // --- UI ELEMENTS ---
+    const mainMenu = document.getElementById('main-menu');
+    const settingsMenu = document.getElementById('settings-menu');
+    const gameOverMenu = document.getElementById('game-over-menu');
+    const promotionMenu = document.getElementById('promotion-menu');
+    
+    const hud = document.getElementById('hud');
+    const turnText = document.getElementById('turn-text');
+    const turnDot = document.getElementById('turn-dot');
+    
+    const timerContainer = document.getElementById('timer-container');
+    const timerWEl = document.getElementById('timer-w');
+    const timerBEl = document.getElementById('timer-b');
+
+    const urContainer = document.getElementById('ur-container');
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
+
+    const playPveBtn = document.getElementById('play-pve-btn');
+    const playPvpBtn = document.getElementById('play-pvp-btn');
+    const openSettingsBtn = document.getElementById('open-settings-btn');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const gameOverTitle = document.getElementById('game-over-title');
+    const gameOverSubtitle = document.getElementById('game-over-subtitle');
+
+    // --- SETTINGS LOGIC ---
+    function applySettings() {
+        // Tema
+        appSettings.theme = document.getElementById('theme-select').value;
+        colorLight = THEMES[appSettings.theme].light;
+        colorDark = THEMES[appSettings.theme].dark;
+        
+        // Timer
+        appSettings.timer = document.getElementById('timer-toggle').checked;
+        if(appSettings.timer) timerContainer.classList.remove('hidden-el');
+        else timerContainer.classList.add('hidden-el');
+        
+        // Undo / Redo
+        appSettings.undoRedo = document.getElementById('ur-toggle').checked;
+        if(appSettings.undoRedo) urContainer.classList.remove('hidden-el');
+        else urContainer.classList.add('hidden-el');
+
+        drawBoard();
+    }
+
+    // --- TIMER LOGIC ---
+    function formatTime(sec) {
+        let m = Math.floor(sec / 60).toString().padStart(2, '0');
+        let s = (sec % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval);
+        timeW = 600;
+        timeB = 600;
+        timerWEl.textContent = formatTime(timeW);
+        timerBEl.textContent = formatTime(timeB);
+        timerWEl.style.color = '#fff'; timerWEl.style.fontWeight = 'bold';
+        timerBEl.style.color = '#aaa'; timerBEl.style.fontWeight = 'normal';
+    }
+
+    function startTimer() {
+        if (!appSettings.timer) return;
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (state !== 'playing' && state !== 'animating') return;
+            
+            if (turn === 'white') timeW--; 
+            else timeB--;
+            
+            timerWEl.textContent = formatTime(timeW);
+            timerBEl.textContent = formatTime(timeB);
+            
+            if (timeW <= 0) {
+                state = 'gameover';
+                showGameOver('Waktu Habis!', 'Hitam Menang');
+                clearInterval(timerInterval);
+            } else if (timeB <= 0) {
+                state = 'gameover';
+                showGameOver('Waktu Habis!', 'Putih Menang');
+                clearInterval(timerInterval);
+            }
+        }, 1000);
+    }
+
+    // --- UNDO / REDO LOGIC ---
+    function saveState() {
+        if (!appSettings.undoRedo) return;
+
+        // Potong masa depan jika kita sedang di state masa lalu dan melakukan gerakan baru
+        if (historyIndex < historyStack.length - 1) {
+            historyStack = historyStack.slice(0, historyIndex + 1);
+        }
+        
+        historyStack.push({
+            board: cloneBoard(board),
+            turn: turn,
+            timeW: timeW,
+            timeB: timeB,
+            castling: { ...castling },
+            halfMoveClock: halfMoveClock,
+            positionHistory: { ...positionHistory }
+        });
+        historyIndex++;
+        updateURButtons();
+    }
+
+    function updateURButtons() {
+        undoBtn.disabled = historyIndex <= 0;
+        redoBtn.disabled = historyIndex >= historyStack.length - 1;
+    }
+
+    function restoreState(index) {
+        const pastState = historyStack[index];
+        board = cloneBoard(pastState.board);
+        turn = pastState.turn;
+        timeW = pastState.timeW;
+        timeB = pastState.timeB;
+        castling = { ...pastState.castling };
+        halfMoveClock = pastState.halfMoveClock;
+        positionHistory = { ...pastState.positionHistory };
+        
+        selectedSquare = null;
+        validMovesForSelected = [];
+        animation = null;
+        
+        timerWEl.textContent = formatTime(timeW);
+        timerBEl.textContent = formatTime(timeB);
+        updateHUD();
+        updateURButtons();
+        
+        state = 'playing';
+        if (turn === 'black' && gameMode === 'pve') {
+            setTimeout(makeAIMove, 300);
+        }
+    }
+
+    undoBtn.addEventListener('click', () => {
+        if (state !== 'playing' || historyIndex <= 0) return;
+        
+        // Di mode PvE, jika giliran putih (player), mundur 2 langkah (lewat giliran AI)
+        if (gameMode === 'pve' && turn === 'white' && historyIndex >= 2) {
+            historyIndex -= 2;
+        } else {
+            historyIndex--;
+        }
+        restoreState(historyIndex);
+    });
+
+    redoBtn.addEventListener('click', () => {
+        if (state !== 'playing' || historyIndex >= historyStack.length - 1) return;
+        
+        if (gameMode === 'pve' && turn === 'white' && historyIndex + 2 < historyStack.length) {
+            historyIndex += 2;
+        } else {
+            historyIndex++;
+        }
+        restoreState(historyIndex);
+    });
+
+
+    // --- INITIALIZATION ---
+    function initGame(mode = 'pve') {
+        gameMode = mode;
+        // Copy initial board
+        board = INITIAL_BOARD.map(row => [...row]);
+        turn = 'white';
+        state = 'playing';
+        selectedSquare = null;
+        validMovesForSelected = [];
+        promoSquare = null;
+        animation = null;
+        
+        // Reset Fitur Draw & Rokade
+        castling = { wK: true, wQ: true, bK: true, bQ: true };
+        halfMoveClock = 0;
+        positionHistory = {};
+
+        // Reset Fitur Undo/Timer
+        historyStack = [];
+        historyIndex = -1;
+        if(appSettings.undoRedo) saveState();
+        
+        if(appSettings.timer) {
+            resetTimer();
+            startTimer();
+        }
+        
+        updateHUD();
+        mainMenu.classList.add('hidden');
+        gameOverMenu.classList.add('hidden');
+        promotionMenu.classList.add('hidden');
+        settingsMenu.classList.add('hidden');
+        hud.classList.add('active');
+        
+        // Mencegah game loop bertumpuk saat di-reset
+        if (!window.isGameLoopRunning) {
+            window.isGameLoopRunning = true;
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    // --- DRAWING FUNCTIONS ---
+
+    function drawBoard() {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const isLight = (r + c) % 2 === 0;
+                ctx.fillStyle = isLight ? colorLight : colorDark;
+                ctx.fillRect(c * SQUARE_SIZE, r * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+            }
+        }
+    }
+
+    function drawHighlights() {
+        if (selectedSquare) {
+            ctx.fillStyle = 'rgba(246, 246, 105, 0.5)';
+            ctx.fillRect(selectedSquare.c * SQUARE_SIZE, selectedSquare.r * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            validMovesForSelected.forEach(move => {
+                const cx = move.c * SQUARE_SIZE + SQUARE_SIZE / 2;
+                const cy = move.r * SQUARE_SIZE + SQUARE_SIZE / 2;
+                
+                if (board[move.r][move.c] !== null) {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, SQUARE_SIZE * 0.45, 0, Math.PI * 2);
+                    ctx.lineWidth = 6;
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, SQUARE_SIZE * 0.15, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+    }
+
+    // Fungsi utama menggambar bidak (Sangat Detail Sesuai Referensi)
+    function drawPiece(type, color, x, y, size) {
+        ctx.save();
+        ctx.translate(x + size / 2, y + size / 2);
+
+        const scale = (size * 0.8) / 100;
+        ctx.scale(scale, scale);
+        ctx.translate(0, 10);
+
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 4;
+
+        ctx.fillStyle = color === 'white' ? '#ffffff' : '#222222';
+        ctx.strokeStyle = color === 'white' ? '#000000' : '#111111';
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        const t = type.toLowerCase();
+
+        ctx.beginPath();
+        if (t === 'p') {
+            // PAWN
+            ctx.moveTo(-30, 40); ctx.lineTo(30, 40); ctx.lineTo(28, 34); ctx.lineTo(22, 30);
+            ctx.bezierCurveTo(16, 20, 10, 5, 10, -5);
+            ctx.lineTo(15, -5); ctx.lineTo(12, -10);
+            ctx.bezierCurveTo(15, -20, 12, -35, 0, -35);
+            ctx.bezierCurveTo(-12, -35, -15, -20, -12, -10);
+            ctx.lineTo(-15, -5); ctx.lineTo(-10, -5);
+            ctx.bezierCurveTo(-10, 5, -16, 20, -22, 30);
+            ctx.lineTo(-28, 34);
+        }
+        else if (t === 'r') {
+            // ROOK
+            ctx.moveTo(-30, 40); ctx.lineTo(30, 40); ctx.lineTo(28, 34); ctx.lineTo(22, 30);
+            ctx.lineTo(18, -10); ctx.lineTo(24, -10); ctx.lineTo(24, -15); ctx.lineTo(20, -15);
+            ctx.lineTo(22, -35); ctx.lineTo(14, -35); ctx.lineTo(14, -25); ctx.lineTo(6, -25);
+            ctx.lineTo(6, -35); ctx.lineTo(-6, -35); ctx.lineTo(-6, -25); ctx.lineTo(-14, -25);
+            ctx.lineTo(-14, -35); ctx.lineTo(-22, -35); ctx.lineTo(-20, -15);
+            ctx.lineTo(-24, -15); ctx.lineTo(-24, -10); ctx.lineTo(-18, -10);
+            ctx.lineTo(-22, 30); ctx.lineTo(-28, 34);
+        }
+        else if (t === 'n') {
+            // KNIGHT (Kepala Kuda Detail)
+            ctx.moveTo(-30, 40); ctx.lineTo(30, 40); ctx.lineTo(28, 34); ctx.lineTo(22, 30);
+            ctx.bezierCurveTo(32, 10, 26, -15, 12, -28); // Surai
+            ctx.lineTo(8, -44); ctx.lineTo(0, -32); // Telinga
+            ctx.bezierCurveTo(-6, -32, -10, -30, -16, -24); // Dahi
+            ctx.lineTo(-28, -6); // Batang Hidung
+            ctx.lineTo(-32, 2); ctx.lineTo(-24, 8); // Moncong & Dagu
+            ctx.lineTo(-12, 2); ctx.bezierCurveTo(-14, 10, -12, 14, -10, 16); // Mulut & Pipi
+            ctx.bezierCurveTo(-10, 16, -32, 20, -22, 30); // Dada
+            ctx.lineTo(-28, 34);
+        }
+        else if (t === 'b') {
+            // BISHOP
+            ctx.moveTo(-30, 40); ctx.lineTo(30, 40); ctx.lineTo(28, 34); ctx.lineTo(22, 30);
+            ctx.bezierCurveTo(16, 20, 10, 5, 10, -5);
+            ctx.lineTo(16, -5); ctx.lineTo(14, -10);
+            ctx.bezierCurveTo(20, -20, 10, -35, 1, -38);
+            ctx.lineTo(0, -38);
+            ctx.bezierCurveTo(-10, -35, -20, -20, -14, -10);
+            ctx.lineTo(-16, -5); ctx.lineTo(-10, -5);
+            ctx.bezierCurveTo(-10, 5, -16, 20, -22, 30);
+            ctx.lineTo(-28, 34);
+        }
+        else if (t === 'q') {
+            // QUEEN
+            ctx.moveTo(-32, 40); ctx.lineTo(32, 40); ctx.lineTo(30, 34); ctx.lineTo(24, 30);
+            ctx.bezierCurveTo(18, 20, 12, 5, 12, -5);
+            ctx.lineTo(18, -5); ctx.lineTo(15, -10);
+            ctx.lineTo(26, -35); ctx.lineTo(14, -20);
+            ctx.lineTo(10, -38); ctx.lineTo(4, -22);
+            ctx.lineTo(0, -40); ctx.lineTo(-4, -22);
+            ctx.lineTo(-10, -38); ctx.lineTo(-14, -20);
+            ctx.lineTo(-26, -35);
+            ctx.lineTo(-15, -10); ctx.lineTo(-18, -5); ctx.lineTo(-12, -5);
+            ctx.bezierCurveTo(-12, 5, -18, 20, -24, 30);
+            ctx.lineTo(-30, 34);
+        }
+        else if (t === 'k') {
+            // KING (Redesign: Jauh lebih tinggi, mencolok, dan salib sangat tegas/besar)
+            ctx.moveTo(-32, 40); ctx.lineTo(32, 40); ctx.lineTo(30, 34); ctx.lineTo(24, 30);
+            ctx.bezierCurveTo(18, 20, 12, 5, 12, -10); // Badan lebih tinggi dari ratu
+            ctx.lineTo(18, -10); ctx.lineTo(15, -15);
+            ctx.bezierCurveTo(24, -20, 24, -45, 0, -45); // Kubah mahkota besar & tinggi
+            ctx.bezierCurveTo(-24, -45, -24, -20, -15, -15);
+            ctx.lineTo(-18, -10); ctx.lineTo(-12, -10);
+            ctx.bezierCurveTo(-12, 5, -18, 20, -24, 30);
+            ctx.lineTo(-30, 34);
+            
+            // Salib yang sangat mencolok dan tebal
+            ctx.moveTo(-3, -45); ctx.lineTo(-3, -51); 
+            ctx.lineTo(-9, -51); ctx.lineTo(-9, -56);
+            ctx.lineTo(-3, -56); ctx.lineTo(-3, -64); 
+            ctx.lineTo(3, -64); ctx.lineTo(3, -56);
+            ctx.lineTo(9, -56); ctx.lineTo(9, -51); 
+            ctx.lineTo(3, -51); ctx.lineTo(3, -45);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Tambahan Bola Mahkota
+        if (t === 'q') {
+            ctx.beginPath();
+            [26, 10, 0, -10, -26].forEach((bx, i) => {
+                const by = i === 2 ? -40 : (i === 0 || i === 4 ? -35 : -38);
+                ctx.moveTo(bx + 2.5, by);
+                ctx.arc(bx, by, 2.5, 0, Math.PI*2);
+            });
+            ctx.fill(); ctx.stroke();
+        }
+        if (t === 'b') {
+            ctx.beginPath(); ctx.arc(0, -40, 2.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        }
+
+        // Garis Dalam
+        ctx.shadowColor = 'transparent'; 
+        ctx.strokeStyle = color === 'white' ? '#000000' : '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        
+        const baseW1 = (t === 'q' || t === 'k') ? 30 : 28;
+        const baseW2 = (t === 'q' || t === 'k') ? 24 : 22;
+        ctx.moveTo(-baseW1, 34); ctx.lineTo(baseW1, 34);
+        ctx.moveTo(-baseW2, 30); ctx.lineTo(baseW2, 30);
+
+        if (t === 'p') {
+            ctx.moveTo(-10, -5); ctx.lineTo(10, -5);
+            ctx.moveTo(-12, -10); ctx.lineTo(12, -10);
+        }
+        else if (t === 'r') {
+            ctx.moveTo(-18, -10); ctx.lineTo(18, -10);
+            ctx.moveTo(-20, -15); ctx.lineTo(20, -15);
+        }
+        else if (t === 'n') {
+            ctx.moveTo(17, -15); ctx.lineTo(5, -5);
+            ctx.moveTo(22, -2); ctx.lineTo(10, 8);
+            ctx.moveTo(24, 11); ctx.lineTo(12, 21);
+            ctx.moveTo(-12, 2); ctx.bezierCurveTo(-4, 4, 0, -8, -6, -18);
+        }
+        else if (t === 'b') {
+            ctx.moveTo(-10, -5); ctx.lineTo(10, -5);
+            ctx.moveTo(-14, -10); ctx.lineTo(14, -10);
+            ctx.moveTo(-6, -28); ctx.lineTo(-1, -15); 
+        }
+        else if (t === 'q') {
+            ctx.moveTo(-12, -5); ctx.lineTo(12, -5);
+            ctx.moveTo(-15, -10); ctx.lineTo(15, -10);
+        }
+        else if (t === 'k') {
+            // Penyesuaian garis leher karena ukuran meninggi
+            ctx.moveTo(-12, -10); ctx.lineTo(12, -10);
+            ctx.moveTo(-15, -15); ctx.lineTo(15, -15);
+            ctx.moveTo(-14, -20); ctx.lineTo(14, -20); 
+        }
+        ctx.stroke();
+
+        // Mata Kuda
+        if (t === 'n') {
+            ctx.beginPath();
+            ctx.arc(-8, -18, 2, 0, Math.PI*2);
+            ctx.fillStyle = color === 'white' ? '#000000' : '#ffffff';
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBoard();
+        drawHighlights();
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const piece = board[r][c];
+                if (piece !== null && !(animation && animation.fromR === r && animation.fromC === c)) {
+                    const isWhite = piece === piece.toUpperCase();
+                    const color = isWhite ? 'white' : 'black';
+                    drawPiece(piece, color, c * SQUARE_SIZE, r * SQUARE_SIZE, SQUARE_SIZE);
+                }
+            }
+        }
+
+        if (animation) {
+            const currentX = lerp(animation.fromC * SQUARE_SIZE, animation.toC * SQUARE_SIZE, animation.progress);
+            const currentY = lerp(animation.fromR * SQUARE_SIZE, animation.toR * SQUARE_SIZE, animation.progress);
+            drawPiece(animation.piece, animation.color, currentX, currentY, SQUARE_SIZE);
+        }
+    }
+
+    // --- GAME LOGIC ---
+    function isWhitePiece(piece) { return piece !== null && piece === piece.toUpperCase(); }
+    function isEnemy(r, c, isWhite) {
+        if (board[r][c] === null) return false;
+        return isWhite ? !isWhitePiece(board[r][c]) : isWhitePiece(board[r][c]);
+    }
+    function inBounds(r, c) { return r >= 0 && r < ROWS && c >= 0 && c < COLS; }
+
+    function isSquareAttacked(r, c, byWhite, b) {
+        for (let i = 0; i < ROWS; i++) {
+            for (let j = 0; j < COLS; j++) {
+                const piece = b[i][j];
+                if (piece !== null && isWhitePiece(piece) === byWhite) {
+                    const moves = getPseudoLegalMoves(i, j, b, true); 
+                    if (moves.some(m => m.r === r && m.c === c)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function getPseudoLegalMoves(r, c, b = board, ignoreCastling = false) {
+        const piece = b[r][c];
+        if (!piece) return [];
+        const isWhite = isWhitePiece(piece);
+        const type = piece.toLowerCase();
+        const moves = [];
+
+        const addLineMoves = (dirs) => {
+            for (let [dr, dc] of dirs) {
+                let nr = r + dr, nc = c + dc;
+                while (inBounds(nr, nc)) {
+                    if (b[nr][nc] === null) { moves.push({r: nr, c: nc}); } 
+                    else {
+                        if (isEnemy(nr, nc, isWhite)) moves.push({r: nr, c: nc});
+                        break;
+                    }
+                    nr += dr; nc += dc;
+                }
+            }
+        };
+
+        if (type === 'p') {
+            const dir = isWhite ? -1 : 1;
+            const startRow = isWhite ? 6 : 1;
+            if (inBounds(r + dir, c) && b[r + dir][c] === null) {
+                moves.push({r: r + dir, c: c});
+                if (r === startRow && b[r + dir * 2][c] === null) {
+                    moves.push({r: r + dir * 2, c: c});
+                }
+            }
+            if (inBounds(r + dir, c - 1) && isEnemy(r + dir, c - 1, isWhite)) moves.push({r: r + dir, c: c - 1});
+            if (inBounds(r + dir, c + 1) && isEnemy(r + dir, c + 1, isWhite)) moves.push({r: r + dir, c: c + 1});
+        } 
+        else if (type === 'r') { addLineMoves([[0,1], [0,-1], [1,0], [-1,0]]); } 
+        else if (type === 'b') { addLineMoves([[1,1], [1,-1], [-1,1], [-1,-1]]); } 
+        else if (type === 'q') { addLineMoves([[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]]); } 
+        else if (type === 'n') {
+            const knightMoves = [[-2,-1], [-2,1], [-1,-2], [-1,2], [1,-2], [1,2], [2,-1], [2,1]];
+            for (let [dr, dc] of knightMoves) {
+                let nr = r + dr, nc = c + dc;
+                if (inBounds(nr, nc) && (b[nr][nc] === null || isEnemy(nr, nc, isWhite))) moves.push({r: nr, c: nc});
+            }
+        } 
+        else if (type === 'k') {
+            const kingMoves = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]];
+            for (let [dr, dc] of kingMoves) {
+                let nr = r + dr, nc = c + dc;
+                if (inBounds(nr, nc) && (b[nr][nc] === null || isEnemy(nr, nc, isWhite))) moves.push({r: nr, c: nc});
+            }
+
+            // Aturan Rokade (Castling)
+            if (!ignoreCastling) {
+                if (isWhite) {
+                    if (castling.wK && b[7][5] === null && b[7][6] === null && !isKingInCheck(b, true) && !isSquareAttacked(7,5,false,b) && !isSquareAttacked(7,6,false,b)) moves.push({r: 7, c: 6});
+                    if (castling.wQ && b[7][1] === null && b[7][2] === null && b[7][3] === null && !isKingInCheck(b, true) && !isSquareAttacked(7,3,false,b) && !isSquareAttacked(7,2,false,b)) moves.push({r: 7, c: 2});
+                } else {
+                    if (castling.bK && b[0][5] === null && b[0][6] === null && !isKingInCheck(b, false) && !isSquareAttacked(0,5,true,b) && !isSquareAttacked(0,6,true,b)) moves.push({r: 0, c: 6});
+                    if (castling.bQ && b[0][1] === null && b[0][2] === null && b[0][3] === null && !isKingInCheck(b, false) && !isSquareAttacked(0,3,true,b) && !isSquareAttacked(0,2,true,b)) moves.push({r: 0, c: 2});
+                }
+            }
+        }
+        return moves;
+    }
+
+    function cloneBoard(b) { return b.map(row => [...row]); }
+
+    function isKingInCheck(b, isWhite) {
+        let kingR = -1, kingC = -1;
+        const kingChar = isWhite ? 'K' : 'k';
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (b[r][c] === kingChar) { kingR = r; kingC = c; break; }
+            }
+            if (kingR !== -1) break;
+        }
+        if (kingR === -1) return true; 
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const piece = b[r][c];
+                if (piece !== null && isWhitePiece(piece) !== isWhite) {
+                    const enemyMoves = getPseudoLegalMoves(r, c, b, true);
+                    if(enemyMoves.some(m => m.r === kingR && m.c === kingC)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function getValidMoves(r, c) {
+        const piece = board[r][c];
+        if (!piece) return [];
+        const isWhite = isWhitePiece(piece);
+        const pseudoMoves = getPseudoLegalMoves(r, c, board);
+        const safeMoves = [];
+
+        for (let move of pseudoMoves) {
+            let tempBoard = cloneBoard(board);
+            tempBoard[move.r][move.c] = piece;
+            tempBoard[r][c] = null;
+            if (!isKingInCheck(tempBoard, isWhite)) {
+                safeMoves.push(move);
+            }
+        }
+        return safeMoves;
+    }
+
+    function hasAnyValidMove(isWhite) {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const piece = board[r][c];
+                if (piece !== null && isWhitePiece(piece) === isWhite) {
+                    if (getValidMoves(r, c).length > 0) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function executeMove(fromR, fromC, toR, toC) {
+        const piece = board[fromR][fromC];
+        const isWhite = isWhitePiece(piece);
+        
+        state = 'animating';
+        animation = {
+            piece: piece, color: isWhite ? 'white' : 'black',
+            fromR: fromR, fromC: fromC, toR: toR, toC: toC, progress: 0
+        };
+
+        board[fromR][fromC] = null;
+        selectedSquare = null;
+        validMovesForSelected = [];
+    }
+
+    function finalizeMove() {
+        if (!animation) return;
+        const piece = animation.piece;
+        const toR = animation.toR;
+        const toC = animation.toC;
+        const fromR = animation.fromR;
+        const fromC = animation.fromC;
+        const isWhite = isWhitePiece(piece);
+
+        // Aturan 50 Langkah (Reset jika pion bergerak atau memakan)
+        if (piece.toLowerCase() === 'p' || board[toR][toC] !== null) {
+            halfMoveClock = 0;
+        } else {
+            halfMoveClock++;
+        }
+
+        // Eksekusi Pemindahan Benteng Jika Rokade (Castling)
+        if (piece.toLowerCase() === 'k' && Math.abs(fromC - toC) === 2) {
+            if (toC === 6) { board[toR][5] = board[toR][7]; board[toR][7] = null; } // Sayap Raja
+            if (toC === 2) { board[toR][3] = board[toR][0]; board[toR][0] = null; } // Sayap Ratu
+        }
+
+        board[toR][toC] = piece;
+        animation = null;
+
+        // Update Hak Rokade (Mati jika raja/benteng bergerak atau benteng dimakan)
+        if (piece === 'K') { castling.wK = false; castling.wQ = false; }
+        if (piece === 'k') { castling.bK = false; castling.bQ = false; }
+        if (piece === 'R') {
+            if (fromR === 7 && fromC === 0) castling.wQ = false;
+            if (fromR === 7 && fromC === 7) castling.wK = false;
+        }
+        if (piece === 'r') {
+            if (fromR === 0 && fromC === 0) castling.bQ = false;
+            if (fromR === 0 && fromC === 7) castling.bK = false;
+        }
+        if (toR === 7 && toC === 0) castling.wQ = false;
+        if (toR === 7 && toC === 7) castling.wK = false;
+        if (toR === 0 && toC === 0) castling.bQ = false;
+        if (toR === 0 && toC === 7) castling.bK = false;
+
+        // Cek Promosi Pion
+        if ((piece === 'P' && toR === 0) || (piece === 'p' && toR === 7)) {
+            if (!isWhite && gameMode === 'pve') {
+                board[toR][toC] = 'q';
+                completeTurn();
+            } else {
+                state = 'promoting';
+                promoSquare = { r: toR, c: toC, color: isWhite ? 'white' : 'black' };
+                promotionMenu.classList.remove('hidden');
+            }
+        } else {
+            completeTurn();
+        }
+    }
+
+    // Pengecekan Syarat Draw Kurang Material
+    function checkInsufficientMaterial(b) {
+        let pieces = [];
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (b[r][c] !== null) pieces.push(b[r][c].toLowerCase());
+            }
+        }
+        if (pieces.length === 2) return true; // Raja vs Raja
+        if (pieces.length === 3 && (pieces.includes('b') || pieces.includes('n'))) return true; // Raja vs Raja + Kuda/Gajah
+        return false;
+    }
+
+    // Mendapatkan Hash Posisi untuk Aturan Pengulangan
+    function getBoardHash() {
+        let hash = '';
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) { hash += board[r][c] || '-'; }
+        }
+        hash += turn + castling.wK + castling.wQ + castling.bK + castling.bQ;
+        return hash;
+    }
+
+    function completeTurn() {
+        turn = turn === 'white' ? 'black' : 'white';
+        const isNextWhite = turn === 'white';
+        
+        updateHUD();
+        if(appSettings.undoRedo) saveState();
+
+        // Rekam posisi untuk aturan pengulangan
+        const hash = getBoardHash();
+        positionHistory[hash] = (positionHistory[hash] || 0) + 1;
+
+        if (!hasAnyValidMove(isNextWhite)) {
+            state = 'gameover';
+            if(appSettings.timer) clearInterval(timerInterval);
+            
+            if (isKingInCheck(board, isNextWhite)) showGameOver(isNextWhite ? 'Hitam Menang!' : 'Putih Menang!', 'Checkmate');
+            else showGameOver('Seri!', 'Stalemate (Remis)');
+            return;
+        } else {
+            // Algoritma Draw / Remis
+            if (halfMoveClock >= 100) {
+                state = 'gameover';
+                if(appSettings.timer) clearInterval(timerInterval);
+                showGameOver('Draw!', 'Aturan 50 Langkah Tanpa Pion Dimakan');
+                return;
+            }
+            if (checkInsufficientMaterial(board)) {
+                state = 'gameover';
+                if(appSettings.timer) clearInterval(timerInterval);
+                showGameOver('Draw!', 'Bidak Tidak Cukup (Remis)');
+                return;
+            }
+            if (positionHistory[hash] >= 3) {
+                state = 'gameover';
+                if(appSettings.timer) clearInterval(timerInterval);
+                showGameOver('Draw!', 'Posisi Berulang 3x (Remis)');
+                return;
+            }
+
+            // Peringatan SKAK UI Popup (Sesuai Permintaan)
+            if (isKingInCheck(board, isNextWhite)) {
+                const skakEl = document.getElementById('skak-popup');
+                skakEl.classList.remove('hidden-el', 'fade-out');
+                // Tampil 1.5 Detik lalu otomatis menghilang secara halus
+                setTimeout(() => {
+                    skakEl.classList.add('fade-out');
+                    setTimeout(() => skakEl.classList.add('hidden-el'), 500);
+                }, 1500); 
+            }
+        }
+
+        state = 'playing';
+
+        if (turn === 'black' && gameMode === 'pve') {
+            setTimeout(makeAIMove, 400); // Jeda ditingkatkan sedikit agar lebih alami
+        }
+    }
+
+    // --- AI SEDERHANA NAMUN STRATEGIS (DIROMBAK TOTAL) ---
+    function makeAIMove() {
+        if (state !== 'playing' || turn !== 'black' || gameMode !== 'pve') return;
+
+        let allMoves = [];
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const piece = board[r][c];
+                if (piece !== null && !isWhitePiece(piece)) {
+                    getValidMoves(r, c).forEach(m => {
+                        allMoves.push({ fromR: r, fromC: c, toR: m.r, toC: m.c, piece: piece });
+                    });
+                }
+            }
+        }
+
+        if (allMoves.length === 0) return;
+
+        // Bobot nilai standar bidak catur dalam satuan (centipawn)
+        const pieceValues = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
+
+        // 1. PRE-CALCULATE: Cek bidak AI mana saja yang sedang diancam oleh Player saat ini
+        let currentlyAttacked = {};
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (board[r][c] && !isWhitePiece(board[r][c])) {
+                    if (isSquareAttacked(r, c, true, board)) {
+                        currentlyAttacked[`${r},${c}`] = true;
+                    }
+                }
+            }
+        }
+
+        allMoves.forEach(move => {
+            move.score = 0;
+            const pieceType = move.piece.toLowerCase();
+            const myValue = pieceValues[pieceType] || 0;
+            const targetPiece = board[move.toR][move.toC];
+            const targetValue = targetPiece ? (pieceValues[targetPiece.toLowerCase()] || 0) : 0;
+
+            // 2. SKORING DASAR (Makan Bidak Musuh)
+            move.score += targetValue;
+
+            // 3. SIMULASI MASA DEPAN: Analisis Keamanan Kotak Tujuan
+            let tempBoard = cloneBoard(board);
+            tempBoard[move.toR][move.toC] = move.piece;
+            tempBoard[move.fromR][move.fromC] = null;
+
+            let isDestAttackedByPlayer = isSquareAttacked(move.toR, move.toC, true, tempBoard);
+            let isDestProtectedByAI = isSquareAttacked(move.toR, move.toC, false, tempBoard);
+
+            if (isDestAttackedByPlayer) {
+                // Jika tujuan diserang musuh tapi dilindungi kawan (Trade / Pertukaran)
+                if (isDestProtectedByAI) {
+                    // Jika AI menukar bidak mahal (Ratu) demi bidak murah (Pion), kurangi skor drastis
+                    if (myValue > targetValue) {
+                        move.score -= (myValue - targetValue);
+                    }
+                } else {
+                    // Jika tujuan diserang dan tidak ada yang melindungi (Bunuh diri / Blunder)
+                    move.score -= myValue; 
+                }
+            }
+
+            // 4. KESADARAN BERTAHAN (Melarikan diri dari ancaman)
+            if (currentlyAttacked[`${move.fromR},${move.fromC}`]) {
+                // Jika posisi saat ini diancam, dan kotak tujuan aman, beri BONUS besar untuk kabur
+                if (!isDestAttackedByPlayer) {
+                    move.score += myValue; 
+                }
+            }
+
+            // 5. STRATEGI POSISI (Menguasai center papan)
+            const centerDist = Math.abs(3.5 - move.toR) + Math.abs(3.5 - move.toC);
+            move.score += (7 - centerDist) * 5; 
+
+            // 6. TAKTIK PEMBUKAAN (Development bervariasi)
+            if (pieceType === 'p' && move.fromR === 1) {
+                if (move.fromC === 3 || move.fromC === 4) move.score += 40; // Pion d & e sangat bagus
+                else move.score += 15; // Pion sayap
+            }
+            if ((pieceType === 'n' || pieceType === 'b') && move.fromR === 0) {
+                move.score += 35; // Keluarkan Kuda dan Gajah
+            }
+            
+            // AI menahan diri: Jangan keluarkan Ratu terlalu dini dan lindungi Raja
+            if (pieceType === 'q' && move.fromR === 0) move.score -= 50;
+            if (pieceType === 'k') move.score -= 40;
+
+            // 7. PENGACAKAN TERKONTROL (Anti Pola Berulang)
+            // Nilai acak 0-40 memastikan AI memilih pembukaan dan manuver yang berbeda 
+            // setiap kali pertandingan diulang (kadang main Pion, kadang Kuda).
+            move.score += Math.random() * 40; 
+        });
+
+        // Urutkan move dari skor tertinggi ke terendah
+        allMoves.sort((a, b) => b.score - a.score);
+        
+        // Pilih move terbaik yang sudah dipertimbangkan dengan matang
+        const bestMove = allMoves[0];
+        executeMove(bestMove.fromR, bestMove.fromC, bestMove.toR, bestMove.toC);
+    }
+
+    // --- GAME LOOP & ANIMATION ---
+    let lastTime = 0;
+    const ANIMATION_SPEED = 0.04; 
+
+    function lerp(start, end, amt) { return (1 - amt) * start + amt * end; }
+
+    function gameLoop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        const dt = timestamp - lastTime;
+        lastTime = timestamp;
+
+        if (state === 'animating' && animation) {
+            animation.progress += ANIMATION_SPEED * (dt / 16); 
+            if (animation.progress >= 1) {
+                animation.progress = 1;
+                finalizeMove();
+            }
+        }
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // --- UI & EVENT HANDLING ---
+    function updateHUD() {
+        if (turn === 'white') {
+            turnText.textContent = "Giliran: Putih";
+            turnDot.className = "turn-indicator white-turn";
+            if(appSettings.timer) {
+                timerWEl.style.color = '#fff'; timerWEl.style.fontWeight = 'bold';
+                timerBEl.style.color = '#aaa'; timerBEl.style.fontWeight = 'normal';
+            }
+        } else {
+            turnText.textContent = gameMode === 'pve' ? "Giliran: Hitam (AI)" : "Giliran: Hitam";
+            turnDot.className = "turn-indicator black-turn";
+            if(appSettings.timer) {
+                timerWEl.style.color = '#aaa'; timerWEl.style.fontWeight = 'normal';
+                timerBEl.style.color = '#fff'; timerBEl.style.fontWeight = 'bold';
+            }
+        }
+    }
+
+    function showGameOver(title, subtitle) {
+        gameOverTitle.textContent = title;
+        gameOverSubtitle.textContent = subtitle;
+        gameOverMenu.classList.remove('hidden');
+        hud.classList.remove('active');
+    }
+
+    function getSquareFromClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        let x, y;
+        if (e.touches && e.touches.length > 0) {
+            x = (e.touches[0].clientX - rect.left) * scaleX;
+            y = (e.touches[0].clientY - rect.top) * scaleY;
+        } else {
+            x = (e.clientX - rect.left) * scaleX;
+            y = (e.clientY - rect.top) * scaleY;
+        }
+        const c = Math.floor(x / SQUARE_SIZE);
+        const r = Math.floor(y / SQUARE_SIZE);
+        return {r, c};
+    }
+
+    function handleInteraction(e) {
+        if (state !== 'playing') return;
+        if (gameMode === 'pve' && turn === 'black') return;
+        
+        e.preventDefault();
+        const sq = getSquareFromClick(e);
+        if (!inBounds(sq.r, sq.c)) return;
+
+        const piece = board[sq.r][sq.c];
+        const isTurnPiece = piece !== null && (isWhitePiece(piece) === (turn === 'white'));
+
+        if (selectedSquare) {
+            const isMoveValid = validMovesForSelected.some(m => m.r === sq.r && m.c === sq.c);
+            if (isMoveValid) {
+                executeMove(selectedSquare.r, selectedSquare.c, sq.r, sq.c);
+                return;
+            }
+            if (isTurnPiece) {
+                selectedSquare = sq;
+                validMovesForSelected = getValidMoves(sq.r, sq.c);
+            } else {
+                selectedSquare = null;
+                validMovesForSelected = [];
+            }
+        } else {
+            if (isTurnPiece) {
+                selectedSquare = sq;
+                validMovesForSelected = getValidMoves(sq.r, sq.c);
+            }
+        }
+    }
+
+    // EVENT LISTENERS MENU PENGATURAN
+    openSettingsBtn.addEventListener('click', () => {
+        settingsMenu.classList.remove('hidden');
+    });
+
+    closeSettingsBtn.addEventListener('click', () => {
+        applySettings();
+        settingsMenu.classList.add('hidden');
+    });
+
+    canvas.addEventListener('mousedown', handleInteraction);
+    canvas.addEventListener('touchstart', handleInteraction, {passive: false});
+
+    document.querySelectorAll('.promo-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (state !== 'promoting' || !promoSquare) return;
+            const type = btn.getAttribute('data-piece');
+            const finalPiece = promoSquare.color === 'white' ? type.toUpperCase() : type.toLowerCase();
+            board[promoSquare.r][promoSquare.c] = finalPiece;
+            promotionMenu.classList.add('hidden');
+            promoSquare = null;
+            completeTurn();
+        });
+    });
+
+    playPveBtn.addEventListener('click', () => { initGame('pve'); });
+    playPvpBtn.addEventListener('click', () => { initGame('pvp'); });
+    restartBtn.addEventListener('click', () => { initGame(gameMode); });
+    
+    // Perbaikan: Ganti confirm() bawaan dengan Modal UI Custom
+    resetBtn.addEventListener('click', () => {
+        document.getElementById('reset-confirm-menu').classList.remove('hidden');
+    });
+
+    document.getElementById('confirm-reset-btn').addEventListener('click', () => {
+        document.getElementById('reset-confirm-menu').classList.add('hidden');
+        initGame(gameMode);
+    });
+
+    document.getElementById('cancel-reset-btn').addEventListener('click', () => {
+        document.getElementById('reset-confirm-menu').classList.add('hidden');
+    });
+
+    function resizeCanvas() {
+        const padding = 40;
+        let size = Math.min(window.innerWidth - padding, window.innerHeight - padding - 120); 
+        size = Math.max(300, Math.min(800, size)); 
+        canvas.style.width = size + 'px';
+        canvas.style.height = size + 'px';
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    drawBoard(); // Initial render for menu background
+
+</script>
+</body>
+</html>
